@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Smartphone, Sparkles, UserCog, UserPlus } from 'lucide-react';
+import { BadgeCheck, Smartphone, Sparkles, UserCog } from 'lucide-react';
 import { requestOtp, staffLogin, verifyOtp } from '../api/authApi';
 import { apiErrorMessage } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
@@ -112,14 +112,19 @@ export function LoginPage() {
     <div className="login-shell">
       <div className="login-brand-header">
         <span className="brand-mark">
-          <Sparkles size={18} strokeWidth={2.4} />
+          <Sparkles size={26} strokeWidth={2.4} />
         </span>
-        <span className="brand-name">CampaignCell</span>
       </div>
 
       <div className="login-card">
-        <div className="login-card-title">Hoş geldiniz</div>
-        <div className="login-card-subtitle">Devam etmek için giriş yapın</div>
+        <div className="login-card-header">
+          <BadgeCheck size={22} strokeWidth={2.4} className="login-check-icon" />
+          <span className="login-wordmark">CampaignCell</span>
+        </div>
+
+        {subscriberMode === 'register' && tab === 'subscriber' && (
+          <div className="login-card-subtitle">Devam edebilmek için kayıt olmanız gerekmektedir.</div>
+        )}
 
         <div className="segmented">
           <button type="button" className={tab === 'subscriber' ? 'active' : ''} onClick={() => setTab('subscriber')}>
@@ -138,32 +143,21 @@ export function LoginPage() {
 
         {tab === 'subscriber' && (
           <>
-            <div className="segmented" style={{ marginBottom: 20 }}>
-              <button
-                type="button"
-                className={subscriberMode === 'login' ? 'active' : ''}
-                onClick={() => selectSubscriberMode('login')}
-              >
-                <LogIn size={15} /> Giriş Yap
-              </button>
-              <button
-                type="button"
-                className={subscriberMode === 'register' ? 'active' : ''}
-                onClick={() => selectSubscriberMode('register')}
-              >
-                <UserPlus size={15} /> Kayıt Ol
-              </button>
-            </div>
-
             <form onSubmit={handleRequestOtp}>
               <div className="form-field">
                 <label>GSM Numarası</label>
                 <input value={gsm} onChange={(e) => setGsm(e.target.value)} placeholder="5551234567" required />
               </div>
-              <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
+              <button className="btn btn-login-primary" type="submit" disabled={loading}>
                 {subscriberMode === 'register' ? 'Kayıt Ol' : 'Giriş Yap'}
               </button>
             </form>
+
+            {subscriberMode === 'register' ? (
+              <button type="button" className="login-back-link" onClick={() => selectSubscriberMode('login')}>
+                Zaten hesabınız var mı? Giriş yapın
+              </button>
+            ) : null}
           </>
         )}
 
@@ -177,7 +171,7 @@ export function LoginPage() {
               <label>Şifre</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
+            <button className="btn btn-login-primary" type="submit" disabled={loading}>
               Giriş Yap
             </button>
           </form>
@@ -188,6 +182,12 @@ export function LoginPage() {
           {' '}· Abone için GSM <code>5551234567</code>, OTP <code>1234</code>
         </div>
       </div>
+
+      {tab === 'subscriber' && subscriberMode === 'login' && (
+        <button type="button" className="btn-login-secondary" onClick={() => selectSubscriberMode('register')}>
+          Yeni Hesap Oluştur
+        </button>
+      )}
 
       {otpSent && (
         <OtpModal
