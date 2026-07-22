@@ -24,3 +24,7 @@ export function leaderboard(period: 'daily' | 'weekly') {
 export function myProfile() {
   return unwrap<Profile>(apiClient.get('/game/profile/me'));
 }
+
+export function profileById(userId: string) {
+  return unwrap<Profile>(apiClient.get(`/game/profile/${userId}`));
+}

@@ -53,6 +53,7 @@ model SegmentPrediction {
   confidence        Float
   isCorrect         Boolean?
   correctedSegment  SegmentType?
+  correctedBy       String?
   correctedAt       DateTime?
   createdAt         DateTime  @default(now())
 

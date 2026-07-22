@@ -52,6 +52,7 @@ Swagger: `http://localhost:3002/docs`
 | GET | `/cases` | PERSONEL(atanan)/SUPERVISOR/ADMIN | Optimizasyon vakaları |
 | GET | `/cases/queue/pending` | SUPERVISOR, ADMIN | BELIRSIZ / atanmamış vakalar |
 | GET | `/cases/:id` | PERSONEL(atanan)/SUPERVISOR/ADMIN | Vaka detayı |
+| GET | `/cases/:id/history` | PERSONEL(atanan)/SUPERVISOR/ADMIN | State machine geçmişi (frontend Timeline bileşeni için) |
 | PATCH | `/cases/:id/start` | PERSONEL | ATANDI → OPTIMIZE_EDILIYOR |
 | PATCH | `/cases/:id/start-test` | PERSONEL | OPTIMIZE_EDILIYOR → TEST_EDILIYOR |
 | PATCH | `/cases/:id/complete-test` | PERSONEL | TEST_EDILIYOR → OPTIMIZE_EDILIYOR |

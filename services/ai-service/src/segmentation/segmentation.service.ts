@@ -36,6 +36,7 @@ export class SegmentationService implements OnModuleInit {
           data: {
             isCorrect,
             correctedSegment: isCorrect ? null : newSegment,
+            correctedBy: isCorrect ? null : payload.changed_by,
             correctedAt: new Date(),
           },
         });
@@ -105,5 +106,14 @@ export class SegmentationService implements OnModuleInit {
       incorrect: b.incorrect,
       accuracyRate: b.total === 0 ? null : Math.round(((b.total - b.incorrect) / b.total) * 1000) / 10,
     }));
+  }
+
+  /** Frontend design doc §14.3 "Override tablosu": her yanlış sınıflandırma kaydı. */
+  async listOverrides(limit = 100) {
+    return this.prisma.segmentPrediction.findMany({
+      where: { isCorrect: false },
+      orderBy: { correctedAt: 'desc' },
+      take: Math.min(limit, 200),
+    });
   }
 }

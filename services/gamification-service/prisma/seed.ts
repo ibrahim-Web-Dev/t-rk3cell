@@ -11,41 +11,22 @@ interface DemoExpert {
   fastCompletionCount: number;
   conversionExceedCount: number;
   riskliKayipRescueCount: number;
-  segmentCounts: Record<string, number>;
-  badges: string[];
+  primarySegment: string;
 }
 
 const DEMO_EXPERTS: DemoExpert[] = [
-  {
-    userId: DEMO_SEED_IDS.EXPERT_2,
-    totalPoints: 145,
-    completedCaseCount: 3,
-    fastCompletionCount: 1,
-    conversionExceedCount: 2,
-    riskliKayipRescueCount: 0,
-    segmentCounts: { YENI_ABONE: 2, YUKSEK_DEGER: 1 },
-    badges: ['ILK_KAMPANYA'],
-  },
-  {
-    userId: DEMO_SEED_IDS.EXPERT_1,
-    totalPoints: 95,
-    completedCaseCount: 2,
-    fastCompletionCount: 0,
-    conversionExceedCount: 1,
-    riskliKayipRescueCount: 1,
-    segmentCounts: { RISKLI_KAYIP: 2 },
-    badges: ['ILK_KAMPANYA'],
-  },
-  {
-    userId: DEMO_SEED_IDS.EXPERT_3,
-    totalPoints: 30,
-    completedCaseCount: 1,
-    fastCompletionCount: 1,
-    conversionExceedCount: 0,
-    riskliKayipRescueCount: 0,
-    segmentCounts: { PASIF: 1 },
-    badges: ['ILK_KAMPANYA'],
-  },
+  { userId: DEMO_SEED_IDS.EXPERT_1, totalPoints: 145, completedCaseCount: 3, fastCompletionCount: 1, conversionExceedCount: 1, riskliKayipRescueCount: 3, primarySegment: 'RISKLI_KAYIP' },
+  { userId: DEMO_SEED_IDS.EXPERT_2, totalPoints: 210, completedCaseCount: 4, fastCompletionCount: 2, conversionExceedCount: 2, riskliKayipRescueCount: 0, primarySegment: 'YENI_ABONE' },
+  { userId: DEMO_SEED_IDS.EXPERT_3, totalPoints: 85, completedCaseCount: 2, fastCompletionCount: 1, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'PASIF' },
+  { userId: DEMO_SEED_IDS.EXPERT_4, totalPoints: 320, completedCaseCount: 5, fastCompletionCount: 2, conversionExceedCount: 3, riskliKayipRescueCount: 2, primarySegment: 'RISKLI_KAYIP' },
+  { userId: DEMO_SEED_IDS.EXPERT_5, totalPoints: 60, completedCaseCount: 1, fastCompletionCount: 0, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'YENI_ABONE' },
+  { userId: DEMO_SEED_IDS.EXPERT_6, totalPoints: 95, completedCaseCount: 2, fastCompletionCount: 0, conversionExceedCount: 1, riskliKayipRescueCount: 0, primarySegment: 'PASIF' },
+  { userId: DEMO_SEED_IDS.EXPERT_7, totalPoints: 275, completedCaseCount: 4, fastCompletionCount: 1, conversionExceedCount: 2, riskliKayipRescueCount: 4, primarySegment: 'RISKLI_KAYIP' },
+  { userId: DEMO_SEED_IDS.EXPERT_8, totalPoints: 130, completedCaseCount: 3, fastCompletionCount: 1, conversionExceedCount: 1, riskliKayipRescueCount: 0, primarySegment: 'YUKSEK_DEGER' },
+  { userId: DEMO_SEED_IDS.EXPERT_9, totalPoints: 45, completedCaseCount: 1, fastCompletionCount: 0, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'YENI_ABONE' },
+  { userId: DEMO_SEED_IDS.EXPERT_10, totalPoints: 190, completedCaseCount: 3, fastCompletionCount: 1, conversionExceedCount: 1, riskliKayipRescueCount: 0, primarySegment: 'PASIF' },
+  { userId: DEMO_SEED_IDS.EXPERT_11, totalPoints: 520, completedCaseCount: 6, fastCompletionCount: 3, conversionExceedCount: 4, riskliKayipRescueCount: 5, primarySegment: 'RISKLI_KAYIP' },
+  { userId: DEMO_SEED_IDS.EXPERT_12, totalPoints: 70, completedCaseCount: 1, fastCompletionCount: 0, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'YUKSEK_DEGER' },
 ];
 
 function levelFor(points: number): string {
@@ -76,8 +57,8 @@ async function main() {
         conversionExceedCount: expert.conversionExceedCount,
         riskliKayipRescueCount: expert.riskliKayipRescueCount,
         dailyCompletionDate: today,
-        dailyCompletionCount: expert.completedCaseCount,
-        segmentCounts: expert.segmentCounts,
+        dailyCompletionCount: Math.min(expert.completedCaseCount, 3),
+        segmentCounts: { [expert.primarySegment]: expert.completedCaseCount },
       },
     });
 
@@ -85,8 +66,9 @@ async function main() {
       data: { userId: expert.userId, points: expert.totalPoints, reason: 'DEMO_SEED' },
     });
 
-    for (const badgeCode of expert.badges) {
-      await prisma.badge.create({ data: { userId: expert.userId, badgeCode } });
+    // case doc 6.2: completedCaseCount >= 1 -> "İlk Kampanya" rozeti kazanılmış olur.
+    if (expert.completedCaseCount >= 1) {
+      await prisma.badge.create({ data: { userId: expert.userId, badgeCode: 'ILK_KAMPANYA' } });
     }
 
     await redis.zincrby(`leaderboard:daily:${today}`, expert.totalPoints, expert.userId);
@@ -94,7 +76,7 @@ async function main() {
   }
 
   await redis.quit();
-  console.log('Gamification Service demo verisi yüklendi: 3 uzman için puan/rozet/liderlik.');
+  console.log(`Gamification Service demo verisi yüklendi: ${DEMO_EXPERTS.length} uzman için puan/rozet/liderlik.`);
 }
 
 main()

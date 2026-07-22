@@ -30,6 +30,7 @@ Swagger: `http://localhost:3003/docs`
 | POST | `/ai/assign` | Authenticated | Görev 3: uzman atama skoru (bkz. formül) |
 | GET | `/ai/accuracy` | SUPERVISOR, ADMIN | Genel doğruluk oranı |
 | GET | `/ai/accuracy/by-category` | SUPERVISOR, ADMIN | Segment bazlı doğruluk kırılımı |
+| GET | `/ai/accuracy/overrides` | SUPERVISOR, ADMIN | Yanlış sınıflandırma kayıtları (frontend "Override tablosu") |
 | GET | `/ai/experts` | SUPERVISOR, ADMIN | Uzman read-model önbelleği (debug/izleme) |
 
 ## Uzman Atama Formülü (bölüm 5.3)

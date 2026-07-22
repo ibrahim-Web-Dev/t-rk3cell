@@ -13,11 +13,15 @@ const NAV_BY_ROLE: Record<Role, { to: string; label: string }[]> = {
   [Role.SUPERVISOR]: [
     { to: '/supervisor/dashboard', label: 'Dashboard' },
     { to: '/supervisor/queue', label: 'Bekleyen Kuyruk' },
+    { to: '/supervisor/experts', label: 'Uzmanlar' },
+    { to: '/supervisor/ai-insights', label: 'AI İçgörüleri' },
     { to: '/cases-overview', label: 'Tüm Vakalar' },
   ],
   [Role.ADMIN]: [
+    { to: '/supervisor/dashboard', label: 'Dashboard' },
     { to: '/admin/staff', label: 'Personel Yönetimi' },
     { to: '/cases-overview', label: 'Tüm Vakalar' },
+    { to: '/supervisor/ai-insights', label: 'AI İçgörüleri' },
     { to: '/admin/audit-log', label: 'Audit Log' },
   ],
 };
@@ -31,7 +35,11 @@ export function Layout() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="brand">CampaignCell</div>
+        <div className="brand">
+          <span className="brand-dot" />
+          CampaignCell
+          <span className="brand-tag">CodeNight 2026</span>
+        </div>
         <nav className="app-nav">
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>

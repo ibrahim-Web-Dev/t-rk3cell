@@ -33,6 +33,12 @@ export class CasesController {
     return this.casesService.findOne(id, user);
   }
 
+  @Get(':id/history')
+  @Roles(Role.PERSONEL, Role.SUPERVISOR, Role.ADMIN)
+  findHistory(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.casesService.findHistory(id, user);
+  }
+
   @Patch(':id/start')
   @Roles(Role.PERSONEL)
   start(@Param('id') id: string, @CurrentUser() user: JwtPayload) {

@@ -45,6 +45,15 @@ export class CasesService {
     return found;
   }
 
+  /** Case doc 12.4 (Timeline): full state machine history for a case, oldest first. */
+  async findHistory(id: string, requester: Requester) {
+    await this.getOwnedCase(id, requester);
+    return this.prisma.caseStatusHistory.findMany({
+      where: { caseId: id },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   private async getOwnedCase(id: string, requester: Requester) {
     const found = await this.prisma.optimizationCase.findUnique({ where: { id }, include: { campaign: true } });
     if (!found) throw new NotFoundException('Optimizasyon vakası bulunamadı');

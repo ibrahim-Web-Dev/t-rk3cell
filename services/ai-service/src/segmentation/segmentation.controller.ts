@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '@campaigncell/auth-kit';
 import { Role } from '@campaigncell/shared-types';
@@ -26,5 +26,11 @@ export class SegmentationController {
   @Roles(Role.SUPERVISOR, Role.ADMIN)
   accuracyByCategory() {
     return this.segmentationService.accuracyByCategory();
+  }
+
+  @Get('accuracy/overrides')
+  @Roles(Role.SUPERVISOR, Role.ADMIN)
+  listOverrides(@Query('limit') limit?: string) {
+    return this.segmentationService.listOverrides(limit ? parseInt(limit, 10) : undefined);
   }
 }

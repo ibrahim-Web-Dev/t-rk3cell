@@ -14,6 +14,19 @@ export function getCase(id: string) {
   return unwrap<OptimizationCase>(apiClient.get(`/cases/${id}`));
 }
 
+export interface CaseHistoryEntry {
+  id: string;
+  caseId: string;
+  fromStatus: string;
+  toStatus: string;
+  changedBy: string;
+  createdAt: string;
+}
+
+export function getCaseHistory(id: string) {
+  return unwrap<CaseHistoryEntry[]>(apiClient.get(`/cases/${id}/history`));
+}
+
 export function startCase(id: string) {
   return unwrap<OptimizationCase>(apiClient.patch(`/cases/${id}/start`));
 }
