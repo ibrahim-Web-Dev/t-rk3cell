@@ -4,6 +4,20 @@ import Redis from 'ioredis';
 
 const prisma = new PrismaClient();
 
+/**
+ * Haftalık liderlik anahtarı - RedisService.weeklyKey() ile BİREBİR aynı ISO
+ * hafta biçimi (`leaderboard:weekly:YYYY-Www`) olmalı, aksi halde seed ettiğimiz
+ * hafta ile servisin okuduğu hafta uyuşmaz ve tablo boş görünür.
+ */
+function isoWeekKey(date: Date): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
 interface DemoExpert {
   userId: string;
   totalPoints: number;
@@ -44,8 +58,16 @@ async function main() {
   }
 
   const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const dailyLbKey = `leaderboard:daily:${today}`;
+  const weeklyLbKey = `leaderboard:weekly:${isoWeekKey(now)}`;
+  // Bugün kazanılan puan, hafta genelinin bir dilimi olarak modellenir - böylece
+  // haftalık ≥ günlük olur ve iki tablo da tutarlı biçimde DOLU gelir (önceden
+  // yalnızca günlük seed'leniyordu, haftalık tablo boş görünüyordu).
+  const DAILY_FRACTIONS = [0.25, 0.4, 0.15, 0.5, 0.3, 0.2];
 
+  let i = 0;
   for (const expert of DEMO_EXPERTS) {
     await prisma.userStats.create({
       data: {
@@ -71,12 +93,18 @@ async function main() {
       await prisma.badge.create({ data: { userId: expert.userId, badgeCode: 'ILK_KAMPANYA' } });
     }
 
-    await redis.zincrby(`leaderboard:daily:${today}`, expert.totalPoints, expert.userId);
-    await redis.expire(`leaderboard:daily:${today}`, 60 * 60 * 24 * 8);
+    // Haftalık = toplam puan; günlük = bugünün dilimi (haftalık ≥ günlük).
+    const dailyPoints = Math.max(10, Math.round(expert.totalPoints * DAILY_FRACTIONS[i % DAILY_FRACTIONS.length]));
+    await redis.zincrby(dailyLbKey, dailyPoints, expert.userId);
+    await redis.zincrby(weeklyLbKey, expert.totalPoints, expert.userId);
+    i += 1;
   }
 
+  await redis.expire(dailyLbKey, 60 * 60 * 24 * 8);
+  await redis.expire(weeklyLbKey, 60 * 60 * 24 * 15);
+
   await redis.quit();
-  console.log(`Gamification Service demo verisi yüklendi: ${DEMO_EXPERTS.length} uzman için puan/rozet/liderlik.`);
+  console.log(`Gamification Service demo verisi yüklendi: ${DEMO_EXPERTS.length} uzman için puan/rozet/günlük+haftalık liderlik.`);
 }
 
 main()
