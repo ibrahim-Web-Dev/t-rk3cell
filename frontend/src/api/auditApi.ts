@@ -3,6 +3,7 @@ import { apiClient, unwrap } from './client';
 export interface AuditLogEntry {
   id: string;
   userId: string | null;
+  userLabel: string | null;
   action: string;
   ip: string | null;
   result: string;

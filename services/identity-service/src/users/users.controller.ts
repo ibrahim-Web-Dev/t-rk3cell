@@ -30,6 +30,12 @@ export class UsersController {
     return this.usersService.listStaff();
   }
 
+  @Get('staff-directory')
+  @Roles(Role.PERSONEL, Role.SUPERVISOR, Role.ADMIN)
+  staffDirectory() {
+    return this.usersService.staffDirectory();
+  }
+
   @Get(':id')
   @Roles(Role.SUPERVISOR, Role.ADMIN)
   getById(@Param('id') id: string, @CurrentUser() user: JwtPayload) {

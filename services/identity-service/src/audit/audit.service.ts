@@ -35,10 +35,35 @@ export class AuditService implements OnModuleInit {
     });
   }
 
+  /**
+   * Audit satırları yalnızca `userId` (bir UUID) taşır - farklı kullanıcıları
+   * ayırt etmek için ekranda bunu kısaltıp göstermek yanıltıcıdır, çünkü demo
+   * seed ID'leri (`DEMO_SEED_IDS`) hepsi aynı "00000000-..." önekiyle
+   * başlar, yalnızca son segment değişir. Bu yüzden gösterim için
+   * userId -> email/GSM/ad-soyad eşlemesini AYNI veritabanında (Identity
+   * Service zaten User tablosunun sahibi) tek bir sorguda çözüyoruz - başka
+   * bir servisin veritabanına dokunmuyoruz.
+   */
   async findAll(limit = 200) {
-    return this.prisma.auditLog.findMany({
+    const logs = await this.prisma.auditLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 500),
+    });
+
+    const userIds = Array.from(new Set(logs.map((l) => l.userId).filter((id): id is string => !!id)));
+    const users = userIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, email: true, gsm: true, firstName: true, lastName: true, role: true },
+        })
+      : [];
+    const userById = new Map(users.map((u) => [u.id, u]));
+
+    return logs.map((log) => {
+      const user = log.userId ? userById.get(log.userId) : undefined;
+      const fullName = user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : '';
+      const userLabel = user ? user.email ?? (fullName || user.gsm) ?? null : null;
+      return { ...log, userLabel };
     });
   }
 }

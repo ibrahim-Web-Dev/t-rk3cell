@@ -19,6 +19,7 @@ import { SlaCountdown } from '../../shared/components/SlaCountdown';
 import { Timeline } from '../../shared/components/Timeline';
 import { PRIORITY_LABELS, SEGMENT_LABELS, STATUS_LABELS } from '../../shared/labels';
 import { useToast } from '../../shared/ToastContext';
+import { useAuth } from '../../auth/AuthContext';
 
 export function CaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +30,7 @@ export function CaseDetailPage() {
   const [lift, setLift] = useState(0.15);
   const [busy, setBusy] = useState(false);
   const { show } = useToast();
+  const { user } = useAuth();
 
   function load() {
     if (!id) return;
@@ -133,7 +135,7 @@ export function CaseDetailPage() {
 
         <div className="card">
           <h3>Durum Geçmişi</h3>
-          <Timeline entries={history} />
+          <Timeline entries={history} currentUserId={user?.id} />
         </div>
       </div>
 

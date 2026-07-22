@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { accuracyByCategory, accuracyOverall, AccuracyByCategory, AccuracyOverall, listOverrides, SegmentOverride } from '../../api/aiApi';
+import { listStaff } from '../../api/usersApi';
 import { apiErrorMessage } from '../../api/client';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -9,15 +10,17 @@ export function AiInsightsPage() {
   const [overall, setOverall] = useState<AccuracyOverall | null>(null);
   const [byCategory, setByCategory] = useState<AccuracyByCategory[] | null>(null);
   const [overrides, setOverrides] = useState<SegmentOverride[] | null>(null);
+  const [staffNames, setStaffNames] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
 
   function load() {
     setError(null);
-    Promise.all([accuracyOverall(), accuracyByCategory(), listOverrides()])
-      .then(([o, c, ov]) => {
+    Promise.all([accuracyOverall(), accuracyByCategory(), listOverrides(), listStaff()])
+      .then(([o, c, ov, staff]) => {
         setOverall(o);
         setByCategory(c);
         setOverrides(ov);
+        setStaffNames(new Map(staff.map((u) => [u.id, `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id.slice(0, 8)])));
       })
       .catch((err) => setError(apiErrorMessage(err, 'AI içgörüleri yüklenemedi')));
   }
@@ -118,7 +121,7 @@ export function AiInsightsPage() {
                   <td style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{o.campaignId.slice(0, 8)}</td>
                   <td>{SEGMENT_LABELS[o.predictedSegment] ?? o.predictedSegment}</td>
                   <td>{o.correctedSegment ? SEGMENT_LABELS[o.correctedSegment] ?? o.correctedSegment : '—'}</td>
-                  <td>{o.correctedBy ? o.correctedBy.slice(0, 8) : '—'}</td>
+                  <td>{o.correctedBy ? staffNames.get(o.correctedBy) ?? o.correctedBy.slice(0, 8) : '—'}</td>
                   <td>{o.correctedAt ? new Date(o.correctedAt).toLocaleString('tr-TR') : '—'}</td>
                 </tr>
               ))}

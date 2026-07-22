@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { leaderboard, LeaderboardEntry, myProfile, Profile } from '../../api/gameApi';
+import { listStaffDirectory, StaffDirectoryEntry } from '../../api/usersApi';
 import { apiErrorMessage } from '../../api/client';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -12,17 +13,28 @@ export function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [daily, setDaily] = useState<LeaderboardEntry[]>([]);
   const [weekly, setWeekly] = useState<LeaderboardEntry[]>([]);
+  const [directory, setDirectory] = useState<StaffDirectoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { show } = useToast();
   const { user } = useAuth();
 
+  const namesById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of directory) {
+      const name = [s.firstName, s.lastName].filter(Boolean).join(' ');
+      if (name) map.set(s.id, name);
+    }
+    return map;
+  }, [directory]);
+
   function load() {
     setError(null);
-    Promise.all([myProfile(), leaderboard('daily'), leaderboard('weekly')])
-      .then(([p, d, w]) => {
+    Promise.all([myProfile(), leaderboard('daily'), leaderboard('weekly'), listStaffDirectory()])
+      .then(([p, d, w, dir]) => {
         setProfile(p);
         setDaily(d);
         setWeekly(w);
+        setDirectory(dir);
       })
       .catch((err) => setError(apiErrorMessage(err, 'Profil yüklenemedi')));
   }
@@ -85,8 +97,8 @@ export function ProfilePage() {
       </div>
 
       <div className="grid grid-2">
-        <LeaderboardTable title="Günlük Liderlik Tablosu" entries={daily} highlightUserId={user?.id} />
-        <LeaderboardTable title="Haftalık Liderlik Tablosu" entries={weekly} highlightUserId={user?.id} />
+        <LeaderboardTable title="Günlük Liderlik Tablosu" entries={daily} highlightUserId={user?.id} namesById={namesById} />
+        <LeaderboardTable title="Haftalık Liderlik Tablosu" entries={weekly} highlightUserId={user?.id} namesById={namesById} />
       </div>
     </div>
   );
@@ -96,10 +108,12 @@ function LeaderboardTable({
   title,
   entries,
   highlightUserId,
+  namesById,
 }: {
   title: string;
   entries: LeaderboardEntry[];
   highlightUserId?: string;
+  namesById: Map<string, string>;
 }) {
   return (
     <div className="card">
@@ -119,7 +133,7 @@ function LeaderboardTable({
             {entries.map((e) => (
               <tr key={e.userId} style={e.userId === highlightUserId ? { background: '#eef2ff' } : undefined}>
                 <td>{e.rank}</td>
-                <td>{e.userId === highlightUserId ? 'Siz' : e.userId.slice(0, 8)}</td>
+                <td>{e.userId === highlightUserId ? 'Siz' : namesById.get(e.userId) ?? e.userId.slice(0, 8)}</td>
                 <td>{e.points}</td>
               </tr>
             ))}

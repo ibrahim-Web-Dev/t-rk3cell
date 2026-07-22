@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -25,6 +25,7 @@ import {
   SlaCompliance,
 } from '../../api/statsApi';
 import { accuracyOverall, AccuracyOverall } from '../../api/aiApi';
+import { listStaff } from '../../api/usersApi';
 import { apiErrorMessage } from '../../api/client';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner';
 import { ErrorState } from '../../shared/components/ErrorState';
@@ -44,22 +45,29 @@ export function DashboardPage() {
   const [trend, setTrend] = useState<ConversionTrendRow[] | null>(null);
   const [experts, setExperts] = useState<ExpertPerformanceRow[] | null>(null);
   const [accuracy, setAccuracy] = useState<AccuracyOverall | null>(null);
+  const [staffNames, setStaffNames] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
 
   function load() {
     setError(null);
-    Promise.all([segmentDistribution(), slaCompliance(), conversionTrend(14), expertPerformance(), accuracyOverall()])
-      .then(([s, sl, t, e, a]) => {
+    Promise.all([segmentDistribution(), slaCompliance(), conversionTrend(14), expertPerformance(), accuracyOverall(), listStaff()])
+      .then(([s, sl, t, e, a, staff]) => {
         setSegments(s);
         setSla(sl);
         setTrend(t);
         setExperts(e);
         setAccuracy(a);
+        setStaffNames(new Map(staff.map((u) => [u.id, `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id.slice(0, 8)])));
       })
       .catch((err) => setError(apiErrorMessage(err, 'Dashboard yüklenemedi')));
   }
 
   useEffect(load, []);
+
+  const expertsWithNames = useMemo(
+    () => (experts ?? []).map((e) => ({ ...e, expertName: staffNames.get(e.expertId) ?? e.expertId.slice(0, 8) })),
+    [experts, staffNames],
+  );
 
   if (error) return <ErrorState message={error} onRetry={load} />;
   if (!segments || !sla || !trend || !experts || !accuracy) return <LoadingSpinner label="Dashboard yükleniyor..." />;
@@ -125,9 +133,9 @@ export function DashboardPage() {
           <p style={{ color: 'var(--color-muted)' }}>Henüz tamamlanan vaka yok.</p>
         ) : (
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={experts}>
+            <BarChart data={expertsWithNames}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="expertId" tickFormatter={(id) => id.slice(0, 8)} />
+              <XAxis dataKey="expertName" />
               <YAxis />
               <Tooltip />
               <Bar dataKey="completedCount" fill="#1a9e5c" name="Tamamlanan Vaka" />
@@ -144,9 +152,9 @@ export function DashboardPage() {
             </tr>
           </thead>
           <tbody>
-            {experts.map((e) => (
+            {expertsWithNames.map((e) => (
               <tr key={e.expertId}>
-                <td>{e.expertId.slice(0, 8)}</td>
+                <td>{e.expertName}</td>
                 <td>{e.completedCount}</td>
                 <td>{e.averageConversionLift != null ? `%${Math.round(e.averageConversionLift * 100)}` : '-'}</td>
                 <td>{e.averageDurationHours}</td>

@@ -66,6 +66,23 @@ export class UsersService {
     return users.map((u) => this.toPublicUser(u));
   }
 
+  /**
+   * Minimal, düşük-yetkili "kim kim" dizini: yalnızca isim, e-posta/GSM/
+   * uzmanlık gibi hassas alanlar YOK. `GET /users/staff` (tam detay) hâlâ
+   * SUPERVISOR/ADMIN'e özel; bu uç nokta ise liderlik tablosu/atanan uzman
+   * gibi ekranlarda PERSONEL'in de diğer personelin adını görebilmesi için
+   * (aksi halde UUID'ler gösterilir - demo seed ID'leri hepsi aynı
+   * "00000000-..." önekiyle başladığından bu, tüm kullanıcıların aynı
+   * görünmesine yol açar).
+   */
+  async staffDirectory() {
+    const users = await this.prisma.user.findMany({
+      where: { role: { in: [Role.PERSONEL, Role.SUPERVISOR, Role.ADMIN] } },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    return users;
+  }
+
   async getById(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');

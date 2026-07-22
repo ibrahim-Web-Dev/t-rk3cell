@@ -41,7 +41,7 @@ export function AuditLogPage() {
           {logs.map((log) => (
             <tr key={log.id}>
               <td>{new Date(log.createdAt).toLocaleString('tr-TR')}</td>
-              <td>{log.userId ? log.userId.slice(0, 8) : '-'}</td>
+              <td>{log.userLabel ?? (log.userId ? log.userId.slice(0, 8) : '-')}</td>
               <td>{log.action}</td>
               <td>{log.ip ?? '-'}</td>
               <td>

@@ -23,3 +23,14 @@ export function createStaff(input: CreateStaffInput) {
 export function listStaff() {
   return unwrap<AuthUser[]>(apiClient.get('/users/staff'));
 }
+
+export interface StaffDirectoryEntry {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+/** Herkese (PERSONEL dahil) açık, yalnızca isim içeren düşük-yetkili personel dizini - liderlik tablosu gibi ekranlarda UUID yerine isim göstermek için. */
+export function listStaffDirectory() {
+  return unwrap<StaffDirectoryEntry[]>(apiClient.get('/users/staff-directory'));
+}
