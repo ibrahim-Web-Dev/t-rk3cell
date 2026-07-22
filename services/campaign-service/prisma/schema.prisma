@@ -1,0 +1,150 @@
+// Campaign Service - owns its own PostgreSQL database (campaign_db).
+// No other service may connect to this database directly.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CampaignType {
+  EK_PAKET
+  TARIFE_YUKSELTME
+  CIHAZ_FIRSATI
+  SADAKAT
+}
+
+enum SegmentType {
+  YUKSEK_DEGER
+  RISKLI_KAYIP
+  YENI_ABONE
+  PASIF
+  BELIRSIZ
+}
+
+enum Priority {
+  DUSUK
+  ORTA
+  YUKSEK
+  KRITIK
+}
+
+enum CaseStatus {
+  YENI
+  ATANDI
+  OPTIMIZE_EDILIYOR
+  TEST_EDILIYOR
+  TAMAMLANDI
+  YAYINDA
+  ARSIVLENDI
+}
+
+enum OfferResponse {
+  KABUL
+  ILGILENMIYORUM
+}
+
+model CampaignSequence {
+  year       Int @id
+  lastNumber Int @default(0)
+}
+
+model Campaign {
+  id                String        @id @default(uuid())
+  campaignNumber    String        @unique
+  title             String
+  type              CampaignType
+  targetSegmentHint SegmentType?
+  discountRate      Float
+  validUntil        DateTime
+  createdBy         String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  /// AI Service Task 2 classification result - recorded for EVERY targeted
+  /// campaign regardless of whether it turns into an optimization case
+  /// (that decision is a separate step, see OptimizationCase doc comment).
+  /// Immutable historical record: `OptimizationCase.segment` is the mutable,
+  /// possibly-overridden value experts actually work with.
+  aiSegment               SegmentType?
+  aiPriority              Priority?
+  aiConfidence            Float?
+  aiConversionProbability Float?
+  wasAiClassified         Boolean      @default(false)
+
+  optimizationCase OptimizationCase?
+  offers           SubscriberOffer[]
+
+  @@index([createdBy])
+}
+
+/// A campaign only gets ONE of these when it needs human attention (case doc
+/// 4.2 opening sentence: "Düşük dönüşümlü kampanyalar bir optimizasyon
+/// vakasına dönüşür" - NOT every campaign). Campaign Service decides this by
+/// comparing Campaign.aiConversionProbability against CASE_CONVERSION_THRESHOLD
+/// (see campaign-service/README.md "Vaka Açma Eşiği" for the full reasoning),
+/// or unconditionally when AI Service was unreachable (manual queue fallback,
+/// case doc 2.2). A campaign with no case is a "healthy" campaign that never
+/// needed expert review.
+model OptimizationCase {
+  id                    String     @id @default(uuid())
+  campaignId            String     @unique
+  campaign              Campaign   @relation(fields: [campaignId], references: [id])
+  segment               SegmentType @default(BELIRSIZ)
+  priority              Priority    @default(ORTA)
+  status                CaseStatus  @default(YENI)
+  assignedExpertId      String?
+  assignmentScore       Float?
+  conversionProbability Float?
+  aiConfidence          Float?
+  wasAiClassified       Boolean     @default(true)
+  optimizationNote      String?
+  conversionLift        Float?
+  abTestStartedAt       DateTime?
+  slaStartedAt          DateTime    @default(now())
+  slaDueAt              DateTime
+  slaBreached           Boolean     @default(false)
+  completedAt           DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  statusHistory CaseStatusHistory[]
+
+  @@index([status])
+  @@index([assignedExpertId])
+  @@index([priority])
+}
+
+model CaseStatusHistory {
+  id         String           @id @default(uuid())
+  caseId     String
+  case       OptimizationCase @relation(fields: [caseId], references: [id])
+  fromStatus CaseStatus
+  toStatus   CaseStatus
+  changedBy  String
+  createdAt  DateTime         @default(now())
+
+  @@index([caseId])
+}
+
+/// Per (campaign, subscriber) recommendation - AI Service Task 1 output.
+model SubscriberOffer {
+  id                    String         @id @default(uuid())
+  campaignId            String
+  campaign              Campaign       @relation(fields: [campaignId], references: [id])
+  subscriberId          String
+  score                 Float
+  conversionProbability Float
+  response              OfferResponse?
+  respondedAt           DateTime?
+  satisfactionStars     Int?
+  satisfactionRatedAt   DateTime?
+  createdAt             DateTime       @default(now())
+
+  @@unique([campaignId, subscriberId])
+  @@index([subscriberId])
+}

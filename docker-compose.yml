@@ -1,0 +1,236 @@
+name: campaigncell
+
+x-node-healthcheck: &node-healthcheck
+  interval: 5s
+  timeout: 5s
+  retries: 20
+  start_period: 10s
+
+services:
+  # ---------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------
+  postgres-identity:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_IDENTITY_USER:-identity}
+      POSTGRES_PASSWORD: ${POSTGRES_IDENTITY_PASSWORD:-identity}
+      POSTGRES_DB: ${POSTGRES_IDENTITY_DB:-identity_db}
+    volumes:
+      - identity-db-data:/var/lib/postgresql/data
+    ports:
+      - '5433:5432' # exposed for local psql/Prisma Studio access during development
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_IDENTITY_USER:-identity}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-campaign:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_CAMPAIGN_USER:-campaign}
+      POSTGRES_PASSWORD: ${POSTGRES_CAMPAIGN_PASSWORD:-campaign}
+      POSTGRES_DB: ${POSTGRES_CAMPAIGN_DB:-campaign_db}
+    volumes:
+      - campaign-db-data:/var/lib/postgresql/data
+    ports:
+      - '5434:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_CAMPAIGN_USER:-campaign}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-ai:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_AI_USER:-ai}
+      POSTGRES_PASSWORD: ${POSTGRES_AI_PASSWORD:-ai}
+      POSTGRES_DB: ${POSTGRES_AI_DB:-ai_db}
+    volumes:
+      - ai-db-data:/var/lib/postgresql/data
+    ports:
+      - '5435:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_AI_USER:-ai}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-gamification:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_GAMIFICATION_USER:-gamification}
+      POSTGRES_PASSWORD: ${POSTGRES_GAMIFICATION_PASSWORD:-gamification}
+      POSTGRES_DB: ${POSTGRES_GAMIFICATION_DB:-gamification_db}
+    volumes:
+      - gamification-db-data:/var/lib/postgresql/data
+    ports:
+      - '5436:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_GAMIFICATION_USER:-gamification}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis-gamification:
+    image: redis:7-alpine
+    volumes:
+      - gamification-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - '15672:15672' # management UI
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  # ---------------------------------------------------------------------
+  # Microservices
+  # ---------------------------------------------------------------------
+  identity-service:
+    build:
+      context: .
+      dockerfile: services/identity-service/Dockerfile
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_IDENTITY_USER:-identity}:${POSTGRES_IDENTITY_PASSWORD:-identity}@postgres-identity:5432/${POSTGRES_IDENTITY_DB:-identity_db}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-shared-secret-for-campaigncell}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+    depends_on:
+      postgres-identity:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - '3001:3001'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3001/api/v1', r=>process.exit(0)).on('error',()=>process.exit(1))"]
+      <<: *node-healthcheck
+
+  campaign-service:
+    build:
+      context: .
+      dockerfile: services/campaign-service/Dockerfile
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_CAMPAIGN_USER:-campaign}:${POSTGRES_CAMPAIGN_PASSWORD:-campaign}@postgres-campaign:5432/${POSTGRES_CAMPAIGN_DB:-campaign_db}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-shared-secret-for-campaigncell}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+      AI_SERVICE_URL: http://ai-service:3003/api/v1
+      CASE_CONVERSION_THRESHOLD: ${CASE_CONVERSION_THRESHOLD:-0.40}
+    depends_on:
+      postgres-campaign:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      # Deliberately NOT depending on ai-service: campaign-service must boot
+      # and serve requests even when AI Service is down (case doc 2.2).
+    ports:
+      - '3002:3002'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3002/api/v1', r=>process.exit(0)).on('error',()=>process.exit(1))"]
+      <<: *node-healthcheck
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: services/ai-service/Dockerfile
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgresql://${POSTGRES_AI_USER:-ai}:${POSTGRES_AI_PASSWORD:-ai}@postgres-ai:5432/${POSTGRES_AI_DB:-ai_db}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-shared-secret-for-campaigncell}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+    depends_on:
+      postgres-ai:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - '3003:3003'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3003/api/v1', r=>process.exit(0)).on('error',()=>process.exit(1))"]
+      <<: *node-healthcheck
+
+  gamification-service:
+    build:
+      context: .
+      dockerfile: services/gamification-service/Dockerfile
+    environment:
+      PORT: 3004
+      DATABASE_URL: postgresql://${POSTGRES_GAMIFICATION_USER:-gamification}:${POSTGRES_GAMIFICATION_PASSWORD:-gamification}@postgres-gamification:5432/${POSTGRES_GAMIFICATION_DB:-gamification_db}
+      REDIS_URL: redis://redis-gamification:6379
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-shared-secret-for-campaigncell}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+    depends_on:
+      postgres-gamification:
+        condition: service_healthy
+      redis-gamification:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - '3004:3004'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3004/api/v1', r=>process.exit(0)).on('error',()=>process.exit(1))"]
+      <<: *node-healthcheck
+
+  # ---------------------------------------------------------------------
+  # Gateway + Frontend
+  # ---------------------------------------------------------------------
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    environment:
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-shared-secret-for-campaigncell}
+      IDENTITY_SERVICE_URL: http://identity-service:3001
+      CAMPAIGN_SERVICE_URL: http://campaign-service:3002
+      AI_SERVICE_URL: http://ai-service:3003
+      GAMIFICATION_SERVICE_URL: http://gamification-service:3004
+    depends_on:
+      identity-service:
+        condition: service_healthy
+      campaign-service:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+      gamification-service:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      # Vite bakes VITE_* vars into the JS bundle at BUILD time, not runtime -
+      # so these must be build args, not `environment:` (which only affects
+      # the running container, too late for Vite).
+      args:
+        VITE_API_BASE_URL: http://localhost:3000/api/v1
+        VITE_GAMIFICATION_WS_URL: http://localhost:3000
+    depends_on:
+      - gateway
+    ports:
+      - '5173:80'
+
+volumes:
+  identity-db-data:
+  campaign-db-data:
+  ai-db-data:
+  gamification-db-data:
+  gamification-redis-data:

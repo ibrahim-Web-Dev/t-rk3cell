@@ -1,0 +1,25 @@
+{
+  "name": "@campaigncell/common-kit",
+  "version": "1.0.0",
+  "description": "Standard { success, data, error } response envelope (interceptor + global exception filter) shared across CampaignCell services. The exception filter also publishes audit.log.entry for 401/403 rejections.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch"
+  },
+  "peerDependencies": {
+    "@campaigncell/event-bus": "^1.0.0",
+    "@campaigncell/shared-types": "^1.0.0",
+    "@nestjs/common": "^10.0.0",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@campaigncell/event-bus": "^1.0.0",
+    "@campaigncell/shared-types": "^1.0.0",
+    "@nestjs/common": "^10.4.4",
+    "@types/node": "^20.14.2",
+    "rxjs": "^7.8.1",
+    "typescript": "^5.4.5"
+  }
+}

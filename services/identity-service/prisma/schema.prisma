@@ -1,0 +1,88 @@
+// Identity Service - owns its own PostgreSQL database (identity_db).
+// No other service may connect to this database directly.
+
+// Custom output path: with npm workspaces, @prisma/client would otherwise be
+// hoisted to a single shared root node_modules location, which would cause
+// each service's differently-shaped Prisma Client (different models per
+// database) to overwrite one another. Generating into a service-local path
+// keeps every service's client fully independent.
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUBSCRIBER
+  PERSONEL
+  SUPERVISOR
+  ADMIN
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  role                Role
+  firstName           String?
+  lastName            String?
+  gsm                 String?   @unique
+  email               String?   @unique
+  passwordHash        String?
+  specialties         String[]  @default([])
+  regions             String[]  @default([])
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  refreshTokens RefreshToken[]
+
+  @@index([role])
+}
+
+model RefreshToken {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash           String   @unique
+  revoked             Boolean  @default(false)
+  replacedByTokenHash String?
+  expiresAt           DateTime
+  createdAt           DateTime @default(now())
+  createdByIp         String?
+
+  @@index([userId])
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  gsm       String
+  code      String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([gsm])
+}
+
+/// Centralized audit log. Identity Service is the single writer: it records
+/// its own auth events directly and consumes `audit.log.entry` events
+/// published by every other service over RabbitMQ, so no service reaches
+/// into another service's database to log activity.
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  ip         String?
+  result     String
+  resourceId String?
+  detail     String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}

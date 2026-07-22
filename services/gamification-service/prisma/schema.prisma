@@ -1,0 +1,65 @@
+// Gamification Service - owns its own PostgreSQL database (gamification_db)
+// for durable points/badges/profile, plus Redis for the leaderboard
+// (case doc section 2.1: "örn: Gamification için Redis+PostgreSQL").
+// This service NEVER exposes REST endpoints for domain writes - it only
+// reacts to RabbitMQ events (campaign.optimized, sla.breached,
+// satisfaction.rated, case.assigned).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PointsLedger {
+  id        String   @id @default(uuid())
+  userId    String
+  points    Int
+  reason    String
+  refCaseId String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model UserStats {
+  userId                 String    @id
+  totalPoints            Int       @default(0)
+  level                  String    @default("BRONZ")
+  completedCaseCount     Int       @default(0)
+  fastCompletionCount    Int       @default(0)
+  conversionExceedCount  Int       @default(0)
+  riskliKayipRescueCount Int       @default(0)
+  dailyCompletionDate    String?
+  dailyCompletionCount   Int       @default(0)
+  segmentCounts          Json      @default("{}")
+  updatedAt              DateTime  @updatedAt
+}
+
+model Badge {
+  id        String   @id @default(uuid())
+  userId    String
+  badgeCode String
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeCode])
+  @@index([userId])
+}
+
+/// Local read-model: maps a case/campaign to its assigned expert, populated
+/// purely from Campaign Service's `case.assigned` events. Needed because
+/// `sla.breached` and `satisfaction.rated` events don't carry expert_id
+/// directly - this cache resolves "who to credit/penalize" without ever
+/// querying Campaign Service's database.
+model CaseAssignmentCache {
+  caseId     String  @id
+  campaignId String
+  expertId   String?
+  updatedAt  DateTime @updatedAt
+
+  @@index([campaignId])
+}

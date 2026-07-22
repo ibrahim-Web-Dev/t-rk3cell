@@ -1,0 +1,23 @@
+{
+  "name": "@campaigncell/shared-types",
+  "version": "1.0.0",
+  "description": "Compile-time only shared enums and event payload contracts across CampaignCell services. No runtime dependency between running services is implied.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --out-dir dist --clean",
+    "watch": "tsup src/index.ts --format cjs,esm --dts --out-dir dist --watch"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.4.5"
+  }
+}

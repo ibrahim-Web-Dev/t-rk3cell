@@ -1,0 +1,25 @@
+{
+  "name": "@campaigncell/event-bus",
+  "version": "1.0.0",
+  "description": "Thin RabbitMQ topic-exchange helper (connection, publish, subscribe) shared across CampaignCell services. Contains no domain/business logic - each service still owns its own event handlers and data.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.4"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^10.4.4",
+    "@types/amqplib": "^0.10.5",
+    "@types/node": "^20.14.2",
+    "rxjs": "^7.8.1",
+    "typescript": "^5.4.5"
+  }
+}

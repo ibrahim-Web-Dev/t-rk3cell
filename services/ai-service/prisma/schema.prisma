@@ -1,0 +1,97 @@
+// AI Service - owns its own PostgreSQL database (ai_db).
+// No other service may connect to this database directly. Everything this
+// service knows about experts (specialties/capacity/performance) is a local
+// read-model kept up to date purely by consuming events from Identity and
+// Campaign Service - never by querying their databases.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SegmentType {
+  YUKSEK_DEGER
+  RISKLI_KAYIP
+  YENI_ABONE
+  PASIF
+  BELIRSIZ
+}
+
+enum Priority {
+  DUSUK
+  ORTA
+  YUKSEK
+  KRITIK
+}
+
+/// Task 1 output (case doc section 5.1): per (campaign, subscriber) score.
+model Recommendation {
+  id                    String   @id @default(uuid())
+  campaignId            String
+  subscriberId          String
+  score                 Float
+  conversionProbability Float
+  createdAt             DateTime @default(now())
+
+  @@unique([campaignId, subscriberId])
+}
+
+/// Task 2 output (case doc section 5.2). Keyed by campaignId (not caseId):
+/// Campaign Service calls /ai/classify BEFORE the OptimizationCase row even
+/// exists (the case is created using this response), so campaignId is the
+/// only stable key both sides share at call time. campaignId is 1:1 with the
+/// case anyway (Campaign Service enforces one case per campaign).
+model SegmentPrediction {
+  campaignId        String    @id
+  predictedSegment  SegmentType
+  predictedPriority Priority
+  confidence        Float
+  isCorrect         Boolean?
+  correctedSegment  SegmentType?
+  correctedAt       DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([predictedSegment])
+}
+
+/// Task 3 output (case doc section 5.3) - audit trail of every assignment attempt.
+model AssignmentLog {
+  id        String   @id @default(uuid())
+  caseId    String
+  expertId  String?
+  score     Float?
+  queued    Boolean
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+}
+
+/// Local read-model cache of Identity/Campaign state, maintained exclusively
+/// via RabbitMQ events (staff.created/updated, case.assigned, campaign.optimized).
+model ExpertProfile {
+  userId             String   @id
+  specialties        String[] @default([])
+  regions            String[] @default([])
+  activeCaseCount    Int      @default(0)
+  completedCaseCount Int      @default(0)
+  performanceScore   Float    @default(0.5)
+  updatedAt          DateTime @updatedAt
+}
+
+/// Tracks subscriber rejections per campaign type so future recommendation
+/// scores for similar campaigns can be dampened (case doc section 4.5:
+/// "Abone 'ilgilenmiyorum' derse benzer kampanyaların öneri skoru düşer").
+model OfferFeedback {
+  id           String   @id @default(uuid())
+  subscriberId String
+  campaignType String
+  response     String
+  createdAt    DateTime @default(now())
+
+  @@index([subscriberId, campaignType])
+}
