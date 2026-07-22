@@ -34,6 +34,19 @@ export class AuthService {
 
   async requestOtp(dto: RequestOtpDto): Promise<{ message: string }> {
     const gsm = normalizeGsm(dto.gsm);
+
+    // Registration-status kontrolü SMS gönderilmeden ÖNCE yapılır, böylece
+    // kullanıcı OTP ekranını hiç görmeden "kayıtlı değilsiniz"/"zaten
+    // kayıtlısınız" bilgisini alır (verifyOtp'de de aynı kontrol tekrar
+    // yapılır - defense in depth, ama asıl UX kararı burada verilir).
+    const existingUser = await this.prisma.user.findUnique({ where: { gsm } });
+    if (dto.intent === 'register' && existingUser) {
+      throw new ConflictException('Bu GSM numarası zaten kayıtlı. Giriş yapmayı deneyin.');
+    }
+    if (dto.intent === 'login' && !existingUser) {
+      throw new NotFoundException('Bu numara ile kayıtlı bir hesap bulunamadı. Kayıt olabilirsiniz.');
+    }
+
     await this.prisma.otpCode.create({
       data: {
         gsm,

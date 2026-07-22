@@ -2,8 +2,8 @@ import axios from 'axios';
 import { API_BASE_URL, apiClient, unwrap } from './client';
 import { AuthTokens, AuthUser } from '../auth/authStore';
 
-export function requestOtp(gsm: string) {
-  return unwrap<{ message: string }>(axios.post(`${API_BASE_URL}/auth/subscriber/otp/request`, { gsm }));
+export function requestOtp(gsm: string, intent: 'login' | 'register') {
+  return unwrap<{ message: string }>(axios.post(`${API_BASE_URL}/auth/subscriber/otp/request`, { gsm, intent }));
 }
 
 export function verifyOtp(input: {

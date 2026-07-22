@@ -48,17 +48,45 @@ export function LoginPage() {
     setError(null);
   }
 
+  /** 404 ("bu numara kayıtlı değil") ve 409 ("zaten kayıtlı") durumlarını popup'a çevirir. Ele aldıysa true döner. */
+  function handleAccountConflict(err: unknown): boolean {
+    if (axios.isAxiosError(err) && err.response?.status === 404 && subscriberMode === 'login') {
+      setAccountPrompt({
+        title: 'Hesap Bulunamadı',
+        message: `${gsm} numarasıyla kayıtlı bir hesap bulunamadı. Hemen kayıt olabilirsiniz.`,
+        actionLabel: 'Kayıt Ol',
+        targetMode: 'register',
+      });
+      return true;
+    }
+    if (axios.isAxiosError(err) && err.response?.status === 409 && subscriberMode === 'register') {
+      setAccountPrompt({
+        title: 'Bu Numara Zaten Kayıtlı',
+        message: `${gsm} numarası zaten kayıtlı. Giriş yapmayı deneyebilirsiniz.`,
+        actionLabel: 'Giriş Yap',
+        targetMode: 'login',
+      });
+      return true;
+    }
+    return false;
+  }
+
   async function handleRequestOtp(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await requestOtp(gsm);
+      await requestOtp(gsm, subscriberMode);
       setCode('');
       setOtpSentAt(Date.now());
       setOtpSent(true);
     } catch (err) {
-      setError(apiErrorMessage(err, 'OTP gönderilemedi'));
+      // Kayıt durumu SMS gönderilmeden ÖNCE burada tespit edilir - OTP
+      // ekranı hiç açılmadan doğrudan "kayıtlı değilsiniz"/"zaten
+      // kayıtlısınız" popup'ı çıkar.
+      if (!handleAccountConflict(err)) {
+        setError(apiErrorMessage(err, 'OTP gönderilemedi'));
+      }
     } finally {
       setLoading(false);
     }
@@ -68,7 +96,7 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await requestOtp(gsm);
+      await requestOtp(gsm, subscriberMode);
       setCode('');
       setOtpSentAt(Date.now());
     } catch (err) {
@@ -100,22 +128,10 @@ export function LoginPage() {
       login({ accessToken: result.accessToken, refreshToken: result.refreshToken }, result.user);
       navigate(homePathForRole(result.user.role));
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 404 && subscriberMode === 'login') {
+      // Normalde handleRequestOtp bu durumları SMS'ten önce yakalar; bu yalnızca
+      // aradaki süre içinde hesap durumu değiştiyse devreye giren bir güvenlik ağıdır.
+      if (handleAccountConflict(err)) {
         setOtpSent(false);
-        setAccountPrompt({
-          title: 'Hesap Bulunamadı',
-          message: `${gsm} numarasıyla kayıtlı bir hesap bulunamadı. Hemen kayıt olabilirsiniz.`,
-          actionLabel: 'Kayıt Ol',
-          targetMode: 'register',
-        });
-      } else if (axios.isAxiosError(err) && err.response?.status === 409 && subscriberMode === 'register') {
-        setOtpSent(false);
-        setAccountPrompt({
-          title: 'Bu Numara Zaten Kayıtlı',
-          message: `${gsm} numarası zaten kayıtlı. Giriş yapmayı deneyebilirsiniz.`,
-          actionLabel: 'Giriş Yap',
-          targetMode: 'login',
-        });
       } else {
         setError(apiErrorMessage(err, 'Doğrulama başarısız'));
       }
