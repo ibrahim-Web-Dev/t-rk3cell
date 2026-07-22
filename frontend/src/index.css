@@ -305,6 +305,78 @@ tbody tr:hover { background: var(--color-bg-soft); }
 .pill-danger { background: var(--color-danger-bg); color: var(--color-danger); }
 .pill-warning { background: var(--color-warning-bg); color: var(--color-warning); }
 .pill-muted { background: var(--color-bg-soft); color: var(--color-muted); }
+.pill-purple { background: #f1e9ff; color: #7c3aed; }
+
+/* ---------------------------------------------------------------------- */
+/* Audit log filtreleri                                                   */
+/* ---------------------------------------------------------------------- */
+
+.audit-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 14px 0;
+}
+
+.audit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.audit-chip:hover { border-color: var(--color-border-strong); }
+.audit-chip.active { box-shadow: var(--shadow-focus); border-color: var(--color-brand-blue-500); }
+
+/* Renkli çip = kategori pill sınıfının arka planını ödünç alır */
+.audit-chip.pill-info { background: var(--color-info-bg); color: var(--color-info); border-color: transparent; }
+.audit-chip.pill-success { background: var(--color-success-bg); color: var(--color-success); border-color: transparent; }
+.audit-chip.pill-purple { background: #f1e9ff; color: #7c3aed; border-color: transparent; }
+.audit-chip.pill-danger { background: var(--color-danger-bg); color: var(--color-danger); border-color: transparent; }
+.audit-chip.pill-warning { background: var(--color-warning-bg); color: var(--color-warning); border-color: transparent; }
+.audit-chip.pill-muted { background: var(--color-bg-soft); color: var(--color-muted); border-color: transparent; }
+.audit-chip.active { transform: translateY(-1px); }
+
+.audit-chip-count {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-pill);
+  padding: 1px 7px;
+  font-size: 0.72rem;
+}
+
+.audit-result-seg { margin: 0; width: auto; flex: 0 0 auto; }
+.audit-result-seg button { padding: 7px 16px; font-size: 0.82rem; }
+
+.audit-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 220px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  background: var(--color-surface);
+  color: var(--color-muted);
+}
+.audit-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: var(--color-text-primary);
+}
 
 /* §5.3 segment renkleri - metin etiketiyle birlikte, yalnızca renkle anlam taşımaz */
 .segment-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
