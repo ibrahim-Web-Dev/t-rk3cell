@@ -6,7 +6,14 @@ export function requestOtp(gsm: string) {
   return unwrap<{ message: string }>(axios.post(`${API_BASE_URL}/auth/subscriber/otp/request`, { gsm }));
 }
 
-export function verifyOtp(input: { gsm: string; code: string; firstName?: string; lastName?: string; email?: string }) {
+export function verifyOtp(input: {
+  gsm: string;
+  code: string;
+  intent: 'login' | 'register';
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}) {
   return unwrap<AuthTokens & { user: AuthUser }>(axios.post(`${API_BASE_URL}/auth/subscriber/otp/verify`, input));
 }
 

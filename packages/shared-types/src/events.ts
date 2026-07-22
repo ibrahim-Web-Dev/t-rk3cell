@@ -20,6 +20,7 @@ export const EventRoutingKey = {
   AI_ASSIGNMENT_SUGGESTED: 'ai.assignment.suggested',
   STAFF_CREATED: 'staff.created',
   STAFF_UPDATED: 'staff.updated',
+  SUBSCRIBER_REGISTERED: 'subscriber.registered',
   BADGE_EARNED: 'badge.earned',
   POINTS_UPDATED: 'points.updated',
   AUDIT_LOG_ENTRY: 'audit.log.entry',
@@ -136,6 +137,11 @@ export interface StaffCreatedPayload {
   user_id: string;
   specialties: string[];
   regions: string[];
+}
+
+/** Published by Identity Service only when OTP verification creates a BRAND NEW subscriber (not on returning-user logins). Campaign Service consumes this to auto-generate "yeni abone" (YENI_ABONE) welcome offers. */
+export interface SubscriberRegisteredPayload {
+  subscriber_id: string;
 }
 
 export interface StaffUpdatedPayload {

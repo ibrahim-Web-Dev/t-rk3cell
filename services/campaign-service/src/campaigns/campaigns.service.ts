@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { RabbitMqService } from '@campaigncell/event-bus';
 import {
   CampaignCreatedPayload,
@@ -9,19 +9,78 @@ import {
   Role,
   SLA_HOURS_BY_PRIORITY,
   SegmentType,
+  SubscriberRegisteredPayload,
 } from '@campaigncell/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiClientService } from '../ai-client/ai-client.service';
+import { mintSystemBearerToken } from '../ai-client/system-token';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { getCaseConversionThreshold } from './case-conversion-threshold';
 
+const MAX_WELCOME_OFFERS = 5;
+
 @Injectable()
-export class CampaignsService {
+export class CampaignsService implements OnModuleInit {
+  private readonly logger = new Logger(CampaignsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiClient: AiClientService,
     private readonly rabbitMq: RabbitMqService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    // Case doc 4.1 spirit: a brand new subscriber should see personalized
+    // offers right away, not an empty screen until a campaign manager
+    // happens to target them explicitly. We auto-generate offers from
+    // existing YENI_ABONE-segmented campaigns using the same Task 1 scoring
+    // path as manual targeting (see createWelcomeOffers below).
+    await this.rabbitMq.subscribe<SubscriberRegisteredPayload>(
+      'campaign-service.subscriber-registered',
+      [EventRoutingKey.SUBSCRIBER_REGISTERED],
+      async (payload) => {
+        await this.createWelcomeOffers(payload.subscriber_id);
+      },
+    );
+  }
+
+  /**
+   * Finds still-valid campaigns the AI already classified as YENI_ABONE
+   * (case doc's "yeni başlayan" segment) and scores/offers them to a
+   * just-registered subscriber - the same Task 1 (/ai/recommend) call a
+   * manually-targeted campaign would trigger, just initiated by an event
+   * instead of a campaign-manager request (so there is no caller JWT to
+   * forward - see mintSystemBearerToken).
+   */
+  private async createWelcomeOffers(subscriberId: string): Promise<void> {
+    const candidates = await this.prisma.campaign.findMany({
+      where: { aiSegment: 'YENI_ABONE', validUntil: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+      take: MAX_WELCOME_OFFERS,
+    });
+
+    if (candidates.length === 0) return;
+
+    const bearerToken = mintSystemBearerToken();
+    for (const campaign of candidates) {
+      const recommendation = await this.aiClient.recommend(
+        { campaignId: campaign.id, subscriberId, campaignType: campaign.type, discountRate: campaign.discountRate },
+        bearerToken,
+      );
+      if (!recommendation) continue;
+      await this.prisma.subscriberOffer.upsert({
+        where: { campaignId_subscriberId: { campaignId: campaign.id, subscriberId } },
+        create: {
+          campaignId: campaign.id,
+          subscriberId,
+          score: recommendation.score,
+          conversionProbability: recommendation.conversionProbability,
+        },
+        update: {},
+      });
+    }
+    this.logger.log(`Yeni abone (${subscriberId}) için ${candidates.length} hoş geldin teklifi oluşturuldu.`);
+  }
 
   private async generateCampaignNumber(): Promise<string> {
     const year = new Date().getFullYear();

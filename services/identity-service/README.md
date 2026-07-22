@@ -29,7 +29,7 @@ Swagger: `http://localhost:3001/docs`
 | Method | Endpoint | Yetki | Açıklama |
 |---|---|---|---|
 | POST | `/auth/subscriber/otp/request` | Public | GSM'e OTP gönderir (simülasyon: 1234) |
-| POST | `/auth/subscriber/otp/verify` | Public | OTP doğrular, yoksa abone kaydı oluşturur, token döner |
+| POST | `/auth/subscriber/otp/verify` | Public | OTP doğrular; body'deki `intent` (`login`\|`register`) niyeti netleştirir - `register` + zaten kayıtlı GSM → 409, `login` + kayıtsız GSM → 404 (frontend bunları ayrı ayrı yakalayıp "kayıt olun"/"giriş yapın" popup'ı gösterir). Yeni kayıt, Campaign Service'in dinlediği `subscriber.registered` event'ini yayınlar (bkz. EVENTS.md). |
 | POST | `/auth/staff/login` | Public | Personel/Süpervizör/Admin girişi |
 | POST | `/auth/refresh` | Public (token zorunlu) | Refresh token rotation |
 | POST | `/auth/logout` | Authenticated | Refresh token'ı geçersiz kılar |

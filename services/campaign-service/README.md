@@ -77,6 +77,9 @@ Swagger: `http://localhost:3002/docs`
 - Her dakika: aktif vakalarda SLA aşımı kontrolü → `sla.breached` event.
 - Her saat: geçerlilik süresi dolmuş `YAYINDA` kampanyaları `ARSIVLENDI`'ye taşır.
 
+## Yeni Abone Hoş Geldin Teklifleri
+Identity Service, OTP doğrulamasıyla YENİ bir abone hesabı oluşturulduğunda `subscriber.registered` event'i yayınlar (bkz. EVENTS.md). `CampaignsService.onModuleInit()` bunu dinler ve hâlâ geçerli, AI tarafından `YENI_ABONE` olarak sınıflandırılmış en fazla 5 kampanya için Task 1 (`/ai/recommend`) skorlamasını çalıştırıp sonuçları `SubscriberOffer` olarak kaydeder — böylece yeni bir abone ilk girişinde boş bir teklif ekranıyla karşılaşmaz. Bu çağrının arkasında bir kullanıcı isteği olmadığı için (event tetikliyor), forward edilecek bir JWT yok; bunun yerine `mintSystemBearerToken()` (`src/ai-client/system-token.ts`) aynı `JWT_SECRET` ile imzalanmış, 60 saniyelik, yalnızca bu iç çağrı için geçerli bir sistem token'ı üretir - AI Service bunu normal bir JWT gibi doğrular (defense-in-depth burada da korunur).
+
 ## Environment Değişkenleri
 | Değişken | Açıklama |
 |---|---|

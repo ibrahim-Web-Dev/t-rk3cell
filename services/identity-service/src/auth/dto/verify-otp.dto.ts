@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, Matches } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, Matches } from 'class-validator';
 
 export class VerifyOtpDto {
   @ApiProperty({ example: '5551234567' })
@@ -11,6 +11,15 @@ export class VerifyOtpDto {
   @IsString()
   @Matches(/^\d{4}$/, { message: 'OTP kodu 4 haneli olmalıdır' })
   code!: string;
+
+  @ApiProperty({
+    example: 'login',
+    enum: ['login', 'register'],
+    description:
+      'Kullanıcının niyeti: "login" mevcut bir hesaba giriş, "register" yeni hesap oluşturma. Bu, aynı GSM ile iki kez kayıt olunmasını veya kayıtsız bir numarayla giriş yapılmaya çalışılmasını ayırt etmek için gereklidir.',
+  })
+  @IsIn(['login', 'register'])
+  intent!: 'login' | 'register';
 
   @ApiPropertyOptional({ example: 'Ayşe' })
   @IsOptional()

@@ -1,11 +1,13 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { BadgeCheck, Smartphone, UserCog } from 'lucide-react';
 import { requestOtp, staffLogin, verifyOtp } from '../api/authApi';
 import { apiErrorMessage } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { homePathForRole } from '../homePathForRole';
 import { OtpModal } from '../shared/components/OtpModal';
+import { AccountPromptModal } from '../shared/components/AccountPromptModal';
 
 type Tab = 'subscriber' | 'staff';
 type SubscriberMode = 'login' | 'register';
@@ -30,6 +32,11 @@ export function LoginPage() {
   // staff flow state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // "bu numara kayıtlı değil" / "bu numara zaten kayıtlı" popup
+  const [accountPrompt, setAccountPrompt] = useState<{ title: string; message: string; actionLabel: string; targetMode: SubscriberMode } | null>(
+    null,
+  );
 
   function selectSubscriberMode(mode: SubscriberMode) {
     setSubscriberMode(mode);
@@ -85,6 +92,7 @@ export function LoginPage() {
       const result = await verifyOtp({
         gsm,
         code,
+        intent: subscriberMode,
         firstName: subscriberMode === 'register' ? firstName : undefined,
         lastName: subscriberMode === 'register' ? lastName : undefined,
         email: subscriberMode === 'register' && regEmail ? regEmail : undefined,
@@ -92,10 +100,34 @@ export function LoginPage() {
       login({ accessToken: result.accessToken, refreshToken: result.refreshToken }, result.user);
       navigate(homePathForRole(result.user.role));
     } catch (err) {
-      setError(apiErrorMessage(err, 'Doğrulama başarısız'));
+      if (axios.isAxiosError(err) && err.response?.status === 404 && subscriberMode === 'login') {
+        setOtpSent(false);
+        setAccountPrompt({
+          title: 'Hesap Bulunamadı',
+          message: `${gsm} numarasıyla kayıtlı bir hesap bulunamadı. Hemen kayıt olabilirsiniz.`,
+          actionLabel: 'Kayıt Ol',
+          targetMode: 'register',
+        });
+      } else if (axios.isAxiosError(err) && err.response?.status === 409 && subscriberMode === 'register') {
+        setOtpSent(false);
+        setAccountPrompt({
+          title: 'Bu Numara Zaten Kayıtlı',
+          message: `${gsm} numarası zaten kayıtlı. Giriş yapmayı deneyebilirsiniz.`,
+          actionLabel: 'Giriş Yap',
+          targetMode: 'login',
+        });
+      } else {
+        setError(apiErrorMessage(err, 'Doğrulama başarısız'));
+      }
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleAccountPromptAction() {
+    if (!accountPrompt) return;
+    selectSubscriberMode(accountPrompt.targetMode);
+    setAccountPrompt(null);
   }
 
   async function handleStaffLogin(e: FormEvent) {
@@ -224,6 +256,16 @@ export function LoginPage() {
           onSubmit={handleVerifyOtp}
           onResend={handleResendOtp}
           onClose={handleCloseOtpModal}
+        />
+      )}
+
+      {accountPrompt && (
+        <AccountPromptModal
+          title={accountPrompt.title}
+          message={accountPrompt.message}
+          actionLabel={accountPrompt.actionLabel}
+          onAction={handleAccountPromptAction}
+          onClose={() => setAccountPrompt(null)}
         />
       )}
     </div>

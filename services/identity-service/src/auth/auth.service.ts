@@ -1,6 +1,7 @@
-import { BadRequestException, HttpException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { Role } from '@campaigncell/shared-types';
+import { EventRoutingKey, Role, SubscriberRegisteredPayload } from '@campaigncell/shared-types';
+import { RabbitMqService } from '@campaigncell/event-bus';
 import { Role as PrismaRole } from '../generated/prisma-client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -28,6 +29,7 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly audit: AuditService,
     private readonly passwordPolicy: PasswordPolicyService,
+    private readonly rabbitMq: RabbitMqService,
   ) {}
 
   async requestOtp(dto: RequestOtpDto): Promise<{ message: string }> {
@@ -64,9 +66,18 @@ export class AuthService {
     await this.prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } });
 
     let user = await this.prisma.user.findUnique({ where: { gsm } });
-    if (!user) {
+
+    // "intent" tells us whether the user meant to log into an existing
+    // account or create a new one - without it, the same GSM could silently
+    // register twice (overwriting nothing, but confusing) or a typo'd,
+    // never-registered number would fail with a confusing "ad/soyad
+    // zorunludur" error instead of a clear "bu numara kayıtlı değil" message.
+    if (dto.intent === 'register') {
+      if (user) {
+        throw new ConflictException('Bu GSM numarası zaten kayıtlı. Giriş yapmayı deneyin.');
+      }
       if (!dto.firstName || !dto.lastName) {
-        throw new BadRequestException('Yeni kayıt için ad ve soyad zorunludur');
+        throw new BadRequestException('Kayıt için ad ve soyad zorunludur');
       }
       user = await this.prisma.user.create({
         data: {
@@ -77,6 +88,10 @@ export class AuthService {
           email: dto.email,
         },
       });
+      const payload: SubscriberRegisteredPayload = { subscriber_id: user.id };
+      await this.rabbitMq.publish(EventRoutingKey.SUBSCRIBER_REGISTERED, payload);
+    } else if (!user) {
+      throw new NotFoundException('Bu numara ile kayıtlı bir hesap bulunamadı. Kayıt olabilirsiniz.');
     }
 
     const tokenPair = await this.tokens.issueTokenPair(user, ip);

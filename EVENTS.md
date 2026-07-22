@@ -30,6 +30,7 @@ Routing key sabitleri ve TypeScript tip tanımları `packages/shared-types/src/e
 | `ai.assignment.suggested` | AI | — | Uzman atama önerisi hesaplandığında |
 | `staff.created` | Identity | **AI** (expert read-model) | Admin yeni personel oluşturduğunda |
 | `staff.updated` | Identity | AI (expert read-model) | Personel bilgisi güncellendiğinde |
+| `subscriber.registered` | Identity | **Campaign** (YENI_ABONE hoş geldin teklifleri) | OTP doğrulama YENİ bir abone hesabı oluşturduğunda (mevcut aboneye giriş dahil değil) |
 | `badge.earned` | Gamification | — (WebSocket ile frontend'e anlık iletilir) | Rozet kazanıldığında |
 | `points.updated` | Gamification | — (WebSocket ile frontend'e anlık iletilir) | Her puan değişiminde |
 | `audit.log.entry` | Her servis (401/403 durumunda `AllExceptionsFilter` otomatik yayınlar; Identity kendi login/lockout olaylarını doğrudan yazar) | **Identity** (merkezi audit log) | Denetlenebilir bir olay gerçekleştiğinde |
@@ -62,6 +63,18 @@ Geri kalan **tüm** servisler arası bilgi akışı (uzman read-model senkroniza
   }
 }
 ```
+
+### subscriber.registered
+```json
+{
+  "event_type": "subscriber.registered",
+  "timestamp": "2026-07-22T21:05:03.900Z",
+  "payload": {
+    "subscriber_id": "185d0094-5c4b-4366-8b59-cdd0dea4ce05"
+  }
+}
+```
+Campaign Service bunu dinleyip, hâlâ geçerli (`validUntil` gelecekte) ve AI tarafından `YENI_ABONE` olarak sınıflandırılmış kampanyaları bulur, her biri için Task 1 (`/ai/recommend`) skorlamasını çalıştırır ve sonucu `SubscriberOffer` olarak kaydeder — yeni abone ilk girişinde boş bir ekranla karşılaşmaz. Bu, kullanıcı bağlamlı bir HTTP isteği olmadığı için `mintSystemBearerToken()` ile imzalanan, yalnızca bu iç çağrı için kullanılan kısa ömürlü (60sn) bir sistem token'ıyla yapılır (bkz. `services/campaign-service/src/ai-client/system-token.ts`).
 
 ### case.assigned
 ```json
