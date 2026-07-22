@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, ShieldCheck, Smartphone, Sparkles, Trophy, TrendingUp, UserCog, UserPlus } from 'lucide-react';
+import { LogIn, Smartphone, Sparkles, UserCog, UserPlus } from 'lucide-react';
 import { requestOtp, staffLogin, verifyOtp } from '../api/authApi';
 import { apiErrorMessage } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
@@ -86,138 +86,108 @@ export function LoginPage() {
 
   return (
     <div className="login-shell">
-      <div className="login-hero">
-        <div className="login-hero-badge">
-          <Sparkles size={22} strokeWidth={2.2} /> CampaignCell
-        </div>
-        <h1>
-          Doğru teklif,
-          <br />
-          doğru kişiye.
-        </h1>
-        <p>
-          Turkcell abonelerine yapay zeka destekli, kişiselleştirilmiş kampanya ve öneri platformu. Doğru zamanda
-          doğru teklifi sunar, uzman ekibinizi akıllıca yönlendirir.
-        </p>
-        <ul className="login-hero-features">
-          <li>
-            <span className="icon-chip">
-              <TrendingUp size={16} />
-            </span>
-            Akıllı segment ve dönüşüm tahmini
-          </li>
-          <li>
-            <span className="icon-chip">
-              <ShieldCheck size={16} />
-            </span>
-            Güvenli, rol bazlı erişim kontrolü
-          </li>
-          <li>
-            <span className="icon-chip">
-              <Trophy size={16} />
-            </span>
-            Gerçek zamanlı puan ve rozet sistemi
-          </li>
-        </ul>
+      <div className="login-brand-header">
+        <span className="brand-mark">
+          <Sparkles size={18} strokeWidth={2.4} />
+        </span>
+        <span className="brand-name">CampaignCell</span>
       </div>
 
-      <div className="login-panel">
-        <div className="login-card">
-          <div className="login-card-title">Hoş geldiniz</div>
-          <div className="login-card-subtitle">Devam etmek için giriş yapın</div>
+      <div className="login-card">
+        <div className="login-card-title">Hoş geldiniz</div>
+        <div className="login-card-subtitle">Devam etmek için giriş yapın</div>
 
-          <div className="segmented">
-            <button type="button" className={tab === 'subscriber' ? 'active' : ''} onClick={() => setTab('subscriber')}>
-              <Smartphone size={15} /> Abone
-            </button>
-            <button type="button" className={tab === 'staff' ? 'active' : ''} onClick={() => setTab('staff')}>
-              <UserCog size={15} /> Personel / Yönetici
-            </button>
+        <div className="segmented">
+          <button type="button" className={tab === 'subscriber' ? 'active' : ''} onClick={() => setTab('subscriber')}>
+            <Smartphone size={15} /> Abone
+          </button>
+          <button type="button" className={tab === 'staff' ? 'active' : ''} onClick={() => setTab('staff')}>
+            <UserCog size={15} /> Personel / Yönetici
+          </button>
+        </div>
+
+        {error && (
+          <div className="state-block state-error" style={{ padding: '10px 0', textAlign: 'left', alignItems: 'flex-start' }}>
+            ⚠ {error}
           </div>
+        )}
 
-          {error && (
-            <div className="state-block state-error" style={{ padding: '10px 0', textAlign: 'left', alignItems: 'flex-start' }}>
-              ⚠ {error}
-            </div>
-          )}
-
-          {tab === 'subscriber' && (
-            <>
-              <div className="segmented" style={{ marginBottom: 20 }}>
-                <button
-                  type="button"
-                  className={subscriberMode === 'login' ? 'active' : ''}
-                  onClick={() => selectSubscriberMode('login')}
-                >
-                  <LogIn size={15} /> Giriş Yap
-                </button>
-                <button
-                  type="button"
-                  className={subscriberMode === 'register' ? 'active' : ''}
-                  onClick={() => selectSubscriberMode('register')}
-                >
-                  <UserPlus size={15} /> Kayıt Ol
-                </button>
-              </div>
-
-              {!otpSent && (
-                <form onSubmit={handleRequestOtp}>
-                  <div className="form-field">
-                    <label>GSM Numarası</label>
-                    <input value={gsm} onChange={(e) => setGsm(e.target.value)} placeholder="5551234567" required />
-                  </div>
-                  <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                    OTP Gönder
-                  </button>
-                </form>
-              )}
-
-              {otpSent && (
-                <form onSubmit={handleVerifyOtp}>
-                  <div className="form-field">
-                    <label>OTP Kodu (simülasyon: 1234)</label>
-                    <input value={code} onChange={(e) => setCode(e.target.value)} required maxLength={4} />
-                  </div>
-                  {subscriberMode === 'register' && (
-                    <>
-                      <div className="form-field">
-                        <label>Ad</label>
-                        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-                      </div>
-                      <div className="form-field">
-                        <label>Soyad</label>
-                        <input value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-                      </div>
-                    </>
-                  )}
-                  <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                    {subscriberMode === 'register' ? 'Kayıt Ol' : 'Giriş Yap'}
-                  </button>
-                </form>
-              )}
-            </>
-          )}
-
-          {tab === 'staff' && (
-            <form onSubmit={handleStaffLogin}>
-              <div className="form-field">
-                <label>E-posta</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </div>
-              <div className="form-field">
-                <label>Şifre</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-              </div>
-              <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                Giriş Yap
+        {tab === 'subscriber' && (
+          <>
+            <div className="segmented" style={{ marginBottom: 20 }}>
+              <button
+                type="button"
+                className={subscriberMode === 'login' ? 'active' : ''}
+                onClick={() => selectSubscriberMode('login')}
+              >
+                <LogIn size={15} /> Giriş Yap
               </button>
-            </form>
-          )}
+              <button
+                type="button"
+                className={subscriberMode === 'register' ? 'active' : ''}
+                onClick={() => selectSubscriberMode('register')}
+              >
+                <UserPlus size={15} /> Kayıt Ol
+              </button>
+            </div>
 
-          <div className="demo-hint">
-            <strong>Demo hesapları:</strong> Personel için <code>uzman1@campaigncell.com</code> / <code>Password1!</code>
-            {' '}· Abone için GSM <code>5551234567</code>, OTP <code>1234</code>
-          </div>
+            {!otpSent && (
+              <form onSubmit={handleRequestOtp}>
+                <div className="form-field">
+                  <label>GSM Numarası</label>
+                  <input value={gsm} onChange={(e) => setGsm(e.target.value)} placeholder="5551234567" required />
+                </div>
+                <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
+                  OTP Gönder
+                </button>
+              </form>
+            )}
+
+            {otpSent && (
+              <form onSubmit={handleVerifyOtp}>
+                <div className="form-field">
+                  <label>OTP Kodu (simülasyon: 1234)</label>
+                  <input value={code} onChange={(e) => setCode(e.target.value)} required maxLength={4} />
+                </div>
+                {subscriberMode === 'register' && (
+                  <>
+                    <div className="form-field">
+                      <label>Ad</label>
+                      <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                    </div>
+                    <div className="form-field">
+                      <label>Soyad</label>
+                      <input value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                    </div>
+                  </>
+                )}
+                <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
+                  {subscriberMode === 'register' ? 'Kayıt Ol' : 'Giriş Yap'}
+                </button>
+              </form>
+            )}
+          </>
+        )}
+
+        {tab === 'staff' && (
+          <form onSubmit={handleStaffLogin}>
+            <div className="form-field">
+              <label>E-posta</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div className="form-field">
+              <label>Şifre</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+            <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
+              Giriş Yap
+            </button>
+          </form>
+        )}
+
+        <div className="demo-hint">
+          <strong>Demo hesapları:</strong> Personel için <code>uzman1@campaigncell.com</code> / <code>Password1!</code>
+          {' '}· Abone için GSM <code>5551234567</code>, OTP <code>1234</code>
         </div>
       </div>
     </div>
