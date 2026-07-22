@@ -5,6 +5,7 @@ import { requestOtp, staffLogin, verifyOtp } from '../api/authApi';
 import { apiErrorMessage } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { homePathForRole } from '../homePathForRole';
+import { OtpModal } from '../shared/components/OtpModal';
 
 type Tab = 'subscriber' | 'staff';
 type SubscriberMode = 'login' | 'register';
@@ -20,6 +21,7 @@ export function LoginPage() {
   // subscriber flow state
   const [gsm, setGsm] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [otpSentAt, setOtpSentAt] = useState(0);
   const [code, setCode] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -41,12 +43,34 @@ export function LoginPage() {
     setLoading(true);
     try {
       await requestOtp(gsm);
+      setCode('');
+      setOtpSentAt(Date.now());
       setOtpSent(true);
     } catch (err) {
       setError(apiErrorMessage(err, 'OTP gönderilemedi'));
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleResendOtp() {
+    setError(null);
+    setLoading(true);
+    try {
+      await requestOtp(gsm);
+      setCode('');
+      setOtpSentAt(Date.now());
+    } catch (err) {
+      setError(apiErrorMessage(err, 'OTP gönderilemedi'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleCloseOtpModal() {
+    setOtpSent(false);
+    setCode('');
+    setError(null);
   }
 
   async function handleVerifyOtp(e: FormEvent) {
@@ -131,41 +155,15 @@ export function LoginPage() {
               </button>
             </div>
 
-            {!otpSent && (
-              <form onSubmit={handleRequestOtp}>
-                <div className="form-field">
-                  <label>GSM Numarası</label>
-                  <input value={gsm} onChange={(e) => setGsm(e.target.value)} placeholder="5551234567" required />
-                </div>
-                <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                  OTP Gönder
-                </button>
-              </form>
-            )}
-
-            {otpSent && (
-              <form onSubmit={handleVerifyOtp}>
-                <div className="form-field">
-                  <label>OTP Kodu (simülasyon: 1234)</label>
-                  <input value={code} onChange={(e) => setCode(e.target.value)} required maxLength={4} />
-                </div>
-                {subscriberMode === 'register' && (
-                  <>
-                    <div className="form-field">
-                      <label>Ad</label>
-                      <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-                    </div>
-                    <div className="form-field">
-                      <label>Soyad</label>
-                      <input value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-                    </div>
-                  </>
-                )}
-                <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                  {subscriberMode === 'register' ? 'Kayıt Ol' : 'Giriş Yap'}
-                </button>
-              </form>
-            )}
+            <form onSubmit={handleRequestOtp}>
+              <div className="form-field">
+                <label>GSM Numarası</label>
+                <input value={gsm} onChange={(e) => setGsm(e.target.value)} placeholder="5551234567" required />
+              </div>
+              <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
+                {subscriberMode === 'register' ? 'Kayıt Ol' : 'Giriş Yap'}
+              </button>
+            </form>
           </>
         )}
 
@@ -190,6 +188,25 @@ export function LoginPage() {
           {' '}· Abone için GSM <code>5551234567</code>, OTP <code>1234</code>
         </div>
       </div>
+
+      {otpSent && (
+        <OtpModal
+          gsm={gsm}
+          sentAt={otpSentAt}
+          mode={subscriberMode}
+          code={code}
+          firstName={firstName}
+          lastName={lastName}
+          loading={loading}
+          error={error}
+          onCodeChange={setCode}
+          onFirstNameChange={setFirstName}
+          onLastNameChange={setLastName}
+          onSubmit={handleVerifyOtp}
+          onResend={handleResendOtp}
+          onClose={handleCloseOtpModal}
+        />
+      )}
     </div>
   );
 }

@@ -561,6 +561,112 @@ tbody tr:hover { background: var(--color-bg-soft); }
 }
 
 /* ---------------------------------------------------------------------- */
+/* OTP doğrulama modalı                                                   */
+/* ---------------------------------------------------------------------- */
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-scale-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 7, 95, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+  animation: modal-fade-in 0.15s ease-out;
+}
+
+.modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-surface);
+  border-radius: var(--radius-hero);
+  box-shadow: var(--shadow-elevated);
+  padding: 36px 32px 32px;
+  text-align: center;
+  animation: modal-scale-in 0.18s ease-out;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-bg-soft);
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.modal-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-brand-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+
+.modal-subtitle {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.otp-code-input {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.5em;
+  padding-left: 24px; /* letter-spacing sağa kaydırdığı için ortalamayı görsel olarak dengeler */
+}
+
+.otp-timer {
+  margin: 14px 0 20px;
+  font-size: 0.88rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.otp-timer-expired {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------- */
 /* Wizard (kampanya oluşturma)                                            */
 /* ---------------------------------------------------------------------- */
 
