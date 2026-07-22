@@ -162,7 +162,11 @@ export class AuthService {
         detail: 'hesap kilitli',
       });
       throw new HttpException(
-        { message: `Hesap kilitli. Kalan süre: ${remainingMinutes} dakika`, remainingMinutes },
+        {
+          message: `Hesap kilitli. Kalan süre: ${remainingMinutes} dakika`,
+          remainingMinutes,
+          lockedUntil: user.lockedUntil.toISOString(),
+        },
         423,
       );
     }
@@ -171,11 +175,12 @@ export class AuthService {
     if (!passwordMatches) {
       const failedAttempts = user.failedLoginAttempts + 1;
       const shouldLock = failedAttempts >= MAX_FAILED_ATTEMPTS;
+      const lockedUntil = shouldLock ? new Date(Date.now() + LOCKOUT_MS) : null;
       await this.prisma.user.update({
         where: { id: user.id },
         data: {
           failedLoginAttempts: shouldLock ? 0 : failedAttempts,
-          lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_MS) : null,
+          lockedUntil,
         },
       });
       await this.audit.record({
@@ -185,9 +190,13 @@ export class AuthService {
         result: 'FAILURE',
         detail: shouldLock ? 'hesap kilitlendi (5 başarısız deneme)' : 'yanlış şifre',
       });
-      if (shouldLock) {
+      if (shouldLock && lockedUntil) {
         throw new HttpException(
-          { message: `Hesap kilitlendi. Kalan süre: 15 dakika`, remainingMinutes: 15 },
+          {
+            message: `Hesap kilitlendi. Kalan süre: 15 dakika`,
+            remainingMinutes: 15,
+            lockedUntil: lockedUntil.toISOString(),
+          },
           423,
         );
       }

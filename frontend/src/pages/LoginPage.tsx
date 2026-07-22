@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import { homePathForRole } from '../homePathForRole';
 import { OtpModal } from '../shared/components/OtpModal';
 import { AccountPromptModal } from '../shared/components/AccountPromptModal';
+import { LockCountdown } from '../shared/components/LockCountdown';
 
 type Tab = 'subscriber' | 'staff';
 type SubscriberMode = 'login' | 'register';
@@ -32,6 +33,7 @@ export function LoginPage() {
   // staff flow state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null);
 
   // "bu numara kayıtlı değil" / "bu numara zaten kayıtlı" popup
   const [accountPrompt, setAccountPrompt] = useState<{ title: string; message: string; actionLabel: string; targetMode: SubscriberMode } | null>(
@@ -146,13 +148,23 @@ export function LoginPage() {
   async function handleStaffLogin(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setLockedUntil(null);
     setLoading(true);
     try {
       const result = await staffLogin({ email, password });
       login({ accessToken: result.accessToken, refreshToken: result.refreshToken }, result.user);
       navigate(homePathForRole(result.user.role));
     } catch (err) {
-      setError(apiErrorMessage(err, 'Giriş başarısız'));
+      // 423 = hesap kilitli: sabit "15 dakika" yerine canlı geri sayım göster.
+      const lu =
+        axios.isAxiosError(err) && err.response?.status === 423
+          ? (err.response.data?.error?.lockedUntil as string | undefined)
+          : undefined;
+      if (lu) {
+        setLockedUntil(lu);
+      } else {
+        setError(apiErrorMessage(err, 'Giriş başarısız'));
+      }
     } finally {
       setLoading(false);
     }
@@ -232,6 +244,7 @@ export function LoginPage() {
 
         {tab === 'staff' && (
           <form onSubmit={handleStaffLogin}>
+            {lockedUntil && <LockCountdown lockedUntil={lockedUntil} onExpire={() => setLockedUntil(null)} />}
             <div className="form-field">
               <label>E-posta</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -240,8 +253,8 @@ export function LoginPage() {
               <label>Şifre</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <button className="btn btn-login-primary" type="submit" disabled={loading}>
-              Giriş Yap
+            <button className="btn btn-login-primary" type="submit" disabled={loading || !!lockedUntil}>
+              {lockedUntil ? 'Hesap kilitli' : 'Giriş Yap'}
             </button>
           </form>
         )}

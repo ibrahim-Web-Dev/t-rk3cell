@@ -52,12 +52,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
       });
     }
 
+    // HttpException'ın response gövdesindeki standart-dışı ek alanları (örn.
+    // hesap kilidinde `lockedUntil`, `remainingMinutes`) istemciye geçir -
+    // frontend bunlarla canlı geri sayım gibi zengin davranış üretebilir.
+    const extra = isHttpException ? extractExtra(exception as HttpException) : {};
+
     response.status(status).json({
       success: false,
       data: null,
-      error: { message, statusCode: status },
+      error: { message, statusCode: status, ...extra },
     });
   }
+}
+
+/** HttpException gövdesindeki message/statusCode/error dışındaki ek alanlar (ör. lockedUntil). */
+function extractExtra(exception: HttpException): Record<string, unknown> {
+  const response = exception.getResponse();
+  if (!response || typeof response !== 'object') return {};
+  const { message: _m, statusCode: _s, error: _e, ...rest } = response as Record<string, unknown>;
+  return rest;
 }
 
 /**
