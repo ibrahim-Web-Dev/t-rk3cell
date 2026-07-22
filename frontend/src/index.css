@@ -477,17 +477,11 @@ tbody tr:hover { background: var(--color-bg-soft); }
   margin-bottom: 26px;
 }
 
-.login-brand-header .brand-mark {
-  width: 60px;
-  height: 60px;
-  border-radius: 16px;
-  background: var(--color-brand-navy);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-brand-yellow);
-  flex-shrink: 0;
-  box-shadow: var(--shadow-card);
+.login-brand-header .login-brand-name {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-brand-navy);
 }
 
 .login-card {

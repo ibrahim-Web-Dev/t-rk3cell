@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, Smartphone, Sparkles, UserCog } from 'lucide-react';
+import { BadgeCheck, Smartphone, UserCog } from 'lucide-react';
 import { requestOtp, staffLogin, verifyOtp } from '../api/authApi';
 import { apiErrorMessage } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
@@ -125,9 +125,7 @@ export function LoginPage() {
   return (
     <div className="login-shell">
       <div className="login-brand-header">
-        <span className="brand-mark">
-          <Sparkles size={26} strokeWidth={2.4} />
-        </span>
+        <span className="login-brand-name">CampaignCell</span>
       </div>
 
       <div className="login-card">
