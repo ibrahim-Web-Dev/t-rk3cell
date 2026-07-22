@@ -23,10 +23,15 @@ async function bootstrap() {
   httpAdapter.get('/health', (_req, res) => res.json({ status: 'ok', service: 'api-gateway' }));
 
   // Global rate limiting (case doc section 10: brute-force / rate limit testi).
+  // Limitler env ile ayarlanabilir; auth endpoint'lerine daha sıkı ama demo/
+  // e2e sırasında tıkamayacak makul bir varsayılan (30/dk) uygulanır - gerçek
+  // bir brute-force binlerce denemedir, 30/dk onu net biçimde durdurur.
+  const globalMax = Number(process.env.RATE_LIMIT_MAX ?? 300);
+  const authMax = Number(process.env.AUTH_RATE_LIMIT_MAX ?? 30);
   app.use(
     rateLimit({
       windowMs: 60_000,
-      max: 300,
+      max: globalMax,
       standardHeaders: true,
       legacyHeaders: false,
       message: { success: false, data: null, error: { message: 'Çok fazla istek, lütfen bekleyin', statusCode: 429 } },
@@ -37,7 +42,7 @@ async function bootstrap() {
     '/api/v1/auth',
     rateLimit({
       windowMs: 60_000,
-      max: 10,
+      max: authMax,
       standardHeaders: true,
       legacyHeaders: false,
       message: { success: false, data: null, error: { message: 'Çok fazla giriş denemesi, lütfen bekleyin', statusCode: 429 } },

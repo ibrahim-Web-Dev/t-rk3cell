@@ -7,11 +7,14 @@
     "packages/*",
     "gateway",
     "services/*",
-    "frontend"
+    "frontend",
+    "e2e"
   ],
   "scripts": {
     "build:all": "npm run build --workspace=packages/shared-types && npm run build --workspace=packages/event-bus && npm run build --workspaces --if-present",
-    "lint:all": "npm run lint --workspaces --if-present"
+    "lint:all": "npm run lint --workspaces --if-present",
+    "test:unit": "npm test --workspace=services/identity-service --workspace=services/campaign-service --workspace=services/ai-service --workspace=services/gamification-service --workspace=gateway",
+    "test:e2e": "npm test --workspace=e2e"
   },
   "engines": {
     "node": ">=20.0.0"
