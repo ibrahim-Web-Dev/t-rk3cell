@@ -47,7 +47,7 @@ export class RecommendationService implements OnModuleInit {
       },
     });
 
-    const result = this.strategy.score({
+    const result = await this.strategy.score({
       campaignId: dto.campaignId,
       subscriberId: dto.subscriberId,
       campaignType: dto.campaignType,
@@ -62,8 +62,9 @@ export class RecommendationService implements OnModuleInit {
         subscriberId: dto.subscriberId,
         score: result.score,
         conversionProbability: result.conversionProbability,
+        modelSource: result.modelSource,
       },
-      update: { score: result.score, conversionProbability: result.conversionProbability },
+      update: { score: result.score, conversionProbability: result.conversionProbability, modelSource: result.modelSource },
     });
 
     const payload: AiRecommendationCreatedPayload = {
@@ -82,5 +83,12 @@ export class RecommendationService implements OnModuleInit {
       ...result,
       visible: result.score >= MIN_VISIBLE_SCORE,
     };
+  }
+
+  /** Frontend AI insights sayfası için şeffaflık: kaç öneri gerçek ML modeliyle, kaçı kural tabanlı fallback ile üretildi. */
+  async modelSourceStats() {
+    const total = await this.prisma.recommendation.count();
+    const mlCount = await this.prisma.recommendation.count({ where: { modelSource: 'ml' } });
+    return { total, mlCount, ruleBasedCount: total - mlCount };
   }
 }

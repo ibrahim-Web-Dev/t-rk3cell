@@ -1,5 +1,7 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Roles } from '@campaigncell/auth-kit';
+import { Role } from '@campaigncell/shared-types';
 import { RecommendationService } from './recommendation.service';
 import { RecommendRequestDto } from './dto/recommend-request.dto';
 
@@ -16,5 +18,11 @@ export class RecommendationController {
   @Post('recommend')
   recommend(@Body() dto: RecommendRequestDto) {
     return this.recommendationService.recommend(dto);
+  }
+
+  @Get('recommend/stats')
+  @Roles(Role.SUPERVISOR, Role.ADMIN)
+  modelSourceStats() {
+    return this.recommendationService.modelSourceStats();
   }
 }

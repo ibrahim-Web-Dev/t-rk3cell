@@ -35,10 +35,11 @@ Turkcell CodeNight 2026 Final case'i. Dört bağımsız mikroservis + API Gatewa
 | Identity Service | 3001 | Kayıt/giriş, token yönetimi, RBAC, audit log | [services/identity-service/README.md](services/identity-service/README.md) |
 | Campaign Service | 3002 | Kampanya yaşam döngüsü, state machine, SLA | [services/campaign-service/README.md](services/campaign-service/README.md) |
 | AI Service | 3003 | Öneri skorlama, segmentasyon, uzman ataması | [services/ai-service/README.md](services/ai-service/README.md) |
+| ↳ ai-ml-inference | *(iç ağ)* | Eğitilmiş churn modelini servis eden Python/FastAPI sidecar'ı — yalnızca AI Service'e açık, dışarıya kapalı | [services/ai-service/README.md](services/ai-service/README.md#ml-entegrasyonu-görev-1-gerçek-bir-eğitilmiş-modelle-çalışır-görev-2-kural-tabanlı-kalır) |
 | Gamification Service | 3004 | Puan, rozet, seviye, liderlik (event-driven) | [services/gamification-service/README.md](services/gamification-service/README.md) |
 | Frontend | 5173 | React SPA (rol bazlı: Abone/Uzman/Süpervizör/Admin) | [frontend/README.md](frontend/README.md) |
 
-Diğer dokümanlar: [`EVENTS.md`](EVENTS.md) (tüm event şemaları), [`docs/AI_APPROACH.md`](docs/AI_APPROACH.md) (AI yaklaşımı ve ML'e geçiş rehberi).
+Diğer dokümanlar: [`EVENTS.md`](EVENTS.md) (tüm event şemaları), [`docs/AI_APPROACH.md`](docs/AI_APPROACH.md) (AI yaklaşımı, gerçek ML entegrasyonu ve ML'e geçiş rehberi).
 
 ## Kurulum ve Çalıştırma
 

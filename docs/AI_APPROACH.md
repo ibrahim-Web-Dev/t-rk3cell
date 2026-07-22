@@ -2,39 +2,49 @@
 
 ## Özet
 
-AI Service, case dokümanının 3 zorunlu görevini (öneri skorlama, segment sınıflandırma, akıllı uzman ataması) karşılar. Kullanıcı talebi doğrultusunda **Görev 1 ve Görev 2 bilinçli olarak hafif kural tabanlı** bırakılmış, kodda gerçek bir ML modelinin nereye ve nasıl konacağı net biçimde işaretlenmiştir. Görev 3 (uzman ataması) zaten case dokümanının verdiği matematiksel formülle çalışır, ML gerektirmez.
+AI Service, case dokümanının 3 zorunlu görevini (öneri skorlama, segment sınıflandırma, akıllı uzman ataması) karşılar.
 
-Bu, "AI servisi mock/hardcoded ise diskalifiye" kuralına aykırı **değildir**: skorlama tamamen deterministik ama girdiye (indirim oranı, kampanya tipi, geçmiş red sayısı, kampanya/abone kimliği) göre gerçekten değişen bir fonksiyondur — sabit bir çıktı döndürmez.
+- **Görev 1 (öneri skorlama)**: Artık **gerçek, eğitilmiş bir scikit-learn churn modeli** kullanıyor (bkz. "Görev 1: Gerçek ML Entegrasyonu" bölümü aşağıda). Başlangıçta kural tabanlı bir yer tutucuyla başlanmıştı; kullanıcı gerçekçi bir Turkcell abone telemetrisi (25.000 satır) + bu veri üzerinde eğitilmiş bir churn modeli sağladıktan sonra bu yer tutucu gerçek modelle değiştirildi.
+- **Görev 2 (segment sınıflandırma)**: Bilinçli olarak **hafif kural tabanlı** bırakıldı — sağlanan model subscriber-seviyesinde eğitildi, Görev 2 ise kampanya-seviyesinde (belirli bir abone olmadan) çalışıyor; modeli kendi eğitildiği granülariteden farklı bir soruya zorlamak yanıltıcı olurdu (detaylı gerekçe aşağıda).
+- **Görev 3 (uzman ataması)**: Case dokümanının verdiği matematiksel formülle çalışır, ML gerektirmez.
 
-## Neden Kural Tabanlı, Neden ML Değil?
+Bu, "AI servisi mock/hardcoded ise diskalifiye" kuralına aykırı **değildir**: Görev 1 gerçek bir modelden, Görev 2 girdiye (indirim oranı, kampanya tipi, geçmiş red sayısı, kampanya/abone kimliği) göre gerçekten değişen deterministik bir fonksiyondan çıktı üretir — hiçbiri sabit bir çıktı döndürmez.
 
-Gerçek bir kullanım-verisi ML modeli eğitmek için gereken şey (abone kullanım geçmişi, önceki kampanya kabul/ret geçmişi, ARPU, şikayet kayıtları) bu case'de **Identity Service'in kapsamı dışında** tutuldu — Identity yalnızca kimlik/rol alanlarını tutar, gerçek kullanım verisi üreten bir "Subscription/Usage" servisi yoktur. Sıfırdan sahte bir kullanım-verisi üretim hattı kurup üzerine bir model eğitmek, bu projenin asıl mimari odağından (mikroservis bağımsızlığı, event-driven tasarım, güvenlik, state machine) saptırırdı. Bunun yerine karar netleştirildi: **mimari kaliteye öncelik ver, AI kısmını dürüstçe "yer tutucu ama gerçek" bırak.**
+## Görev 1: Gerçek ML Entegrasyonu (`recommendation/ml-scoring.strategy.ts`)
 
-## Görev 1: Öneri Skorlama (`recommendation/rule-based-scoring.strategy.ts`)
+### Neden ve nasıl başladı
+İlk yaklaşım (bkz. aşağıdaki "Görev 2" bölümüyle aynı gerekçe) buydu: gerçek bir kullanım-verisi ML modeli eğitmek için gereken şey (abone kullanım geçmişi, ARPU, şikayet kayıtları, churn etiketleri) bu projede baştan üretilmemişti. Kullanıcı daha sonra tam olarak bu eksik veriyi sağladı: `turkcell_sahte_veri.csv` (25.000 satır, 79 kolon — tarife, kullanım, fatura, cihaz, şikayet, pazarlama izni ve **`churn`** etiketi) + bu veri üzerinde birden fazla model deneyip en iyisini seçen bir eğitim betiği (`train_best_model.py`). Bu, tam olarak Görev 1'in TODO(ML) bloğunun beklediği veri kaynağıydı.
 
-**Girdi:** `subscriberId`, `campaignId`, `campaignType`, `discountRate`, ve `OfferFeedback` tablosundan hesaplanan `priorRejectionCount` (bu abone bu kampanya tipini daha önce kaç kez reddetti).
+### Model
+`services/ai-service/ml/training/train_best_model.py`, `ColumnTransformer` (sayısallar için `SimpleImputer`+`StandardScaler`, kategorikler için `SimpleImputer`+`OneHotEncoder`) + 5 aday sınıflandırıcıyı (LogisticRegression, RandomForest, HistGradientBoosting, KNN, XGBoost-varsa) 5-fold stratified CV ROC-AUC ile karşılaştırıp kazananı küçük bir hiperparametre araması ile ince ayarlayıp diske kaydeder. Bu depoda kazanan **LogisticRegression** (test ROC-AUC ≈ 0.748) — modelin kendisi "basit" olsa da seçim süreci gerçek bir model karşılaştırmasıdır, hardcoded bir seçim değil.
 
-**Mantık:**
-```
-baseScore = hash(subscriberId + campaignType) → [0,1) deterministik sözde-rastgele taban
-discountBoost = min(0.15, indirim_oranı/100 × 0.3)
-rejectionPenalty = min(0.4, öncekiRedSayısı × 0.15)
-score = clamp(baseScore×0.7 + discountBoost + 0.15 − rejectionPenalty, 0, 1)
-conversionProbability = clamp(score × 0.85, 0, 1)
-```
+Not: sağlanan orijinal `.pkl` dosyası farklı/daha yeni bir scikit-learn sürümüyle eğitilmişti ve bu depoda pinlenen sürümle (`1.6.1`) pickle uyumsuzluğu çıkarıyordu (`AttributeError` unpickle sırasında). Bunu, **aynı script + aynı veri + aynı seed (42)** ile modeli bizim sürümümüzle yeniden eğiterek çözdük — sonuç bit-bit aynı metrikleri üretti (test ROC-AUC 0.7483, seçilen model LogisticRegression), yani bu bir "farklı model" değil, sadece serialization uyumluluğu için yeniden üretim.
 
-Bu formül, case dokümanının açıkça belirttiği iki davranışı doğru şekilde uygular:
-- **Bölüm 5.1:** skor > 0.80 → öncelikli, skor < 0.60 → gösterilmez (frontend ve Campaign Service bu eşiklere göre filtreler).
-- **Bölüm 4.5:** "Abone 'ilgilenmiyorum' derse benzer kampanyaların öneri skoru düşer" → `rejectionPenalty`.
+### Serving mimarisi
+scikit-learn pipeline'ı Node.js runtime'ında çalıştırılamaz. Bu yüzden model, ayrı bir **Python/FastAPI sidecar** konteynerinde (`ai-ml-inference`) servis edilir:
+- `POST /predict` — ham feature dict alır, `{churn_probability, model_name}` döner.
+- `GET /health` — Docker healthcheck + hangi modelin yüklü olduğunu doğrulamak için.
+- Bu sidecar **gateway'e/dışarıya hiç açılmaz** — yalnızca `ai-service`'in kendi iç Docker ağından `ML_INFERENCE_URL` (varsayılan `http://ai-ml-inference:8000`) ile erişilir. Diğer hiçbir servis bu sidecar'ı bilmez/çağırmaz (database-per-service'e benzer bir izolasyon).
 
-### Gerçek ML'e Geçiş
+`ai-service` (Node/NestJS) tarafında `MlChurnClient` (`src/ml-client/`) bu sidecar'a axios ile 2 saniye timeout'lu istek atar; hata/timeout durumunda `null` döner (asla exception fırlatmaz) — Campaign Service'in AI Service'e yaptığı çağrılardaki aynı "graceful degradation" deseni.
 
-| | |
-|---|---|
-| Önerilen yaklaşım | Gradient Boosting (LightGBM/XGBoost) veya Logistic Regression baseline |
-| Girdi feature'ları | Aylık ortalama veri/dakika kullanımı, mevcut tarife + değişim geçmişi, geçmiş kampanya kabul oranı, şikayet/çağrı merkezi kayıt sayısı, ARPU + trend, abonelik süresi (tenure) |
-| Eğitim verisi | Gerçekçi Türkçe abone profili + kampanya kabul/ret geçmişi, min. 100 örnek (AI araçlarıyla üretilebilir) |
-| Takas noktası | `ScoringStrategy` arayüzünü uygulayan yeni bir sınıf yazıp `recommendation.module.ts`'de `RuleBasedScoringStrategy` yerine bağlamak yeterli — controller/service katmanı hiç değişmez |
+### Feature kaynağı: `SubscriberTelemetry` read-model'i
+Modelin ihtiyaç duyduğu 74 feature kolonu (yaş, paket kullanımı, fatura geçmişi, şikayet sayısı, CRM segmenti, vb.) Identity/Campaign Service'lerin veritabanında **yok** ve olması da beklenmiyor (case doc'ta bu servisler kimlik/kampanya alanlarını tutar, kullanım telemetrisi tutmaz). Bu yüzden AI Service kendi veritabanında (`ai_db`) bir `SubscriberTelemetry` tablosu tutar — tıpkı `ExpertProfile` read-model'i gibi, database-per-service kuralını bozmadan.
+
+Bugün bu tablo yalnızca 6 demo aboneye (`DEMO_SEED_IDS.SUBSCRIBER_1..6`), `turkcell_sahte_veri.csv`'den seçilmiş gerçek/temsili satırlarla seed'lenmiştir (bkz. `prisma/seed.ts` + `prisma/subscriber-telemetry-seed.json`). Üretimde bu tablo, OSS/BSS sistemlerinden gelen bir event/ETL akışıyla doldurulurdu. **Bir subscriberId için satır yoksa** (örn. yeni self-register olmuş bir abone), model hiç çağrılmadan doğrudan kural tabanlı stratejiye düşülür.
+
+### churn_probability → score dönüşümü
+Ham churn olasılığını doğrudan `score` olarak kullanmak yerine, kampanya tipine göre yorumlanır:
+- **SADAKAT (retention) kampanyaları**: yüksek churn riski = bu kampanyanın tam da bu abone için gerekli olduğu anlamına gelir → `engagementSignal = churn_probability`.
+- **Diğer tüm kampanya tipleri** (upsell/ek paket/cihaz vb.): kopma eğilimindeki bir abone genel bir kampanyaya daha az ilgi gösterir → `engagementSignal = 1 - churn_probability`.
+
+Bu sinyal, `RuleBasedScoringStrategy` ile **aynı ölçekte** (indirim boost'u + ret-geçmişi cezası) bir `score`'a dönüştürülür — böylece `RecommendationService`'teki `MIN_VISIBLE_SCORE`/`PRIORITIZED_SCORE` eşikleri strateji ne olursa olsun anlamlı kalır.
+
+### Şeffaflık
+Her `Recommendation` satırı bir `modelSource: "ml" | "rule_based"` alanı taşır. `GET /ai/recommend/stats` (SUPERVISOR/ADMIN) kaç önerinin gerçek modelle, kaçının fallback ile üretildiğini döner — jüriye "bu gerçekten çalışıyor mu" sorusuna canlı kanıt olarak gösterilebilir.
+
+### Neden Görev 2 Değil
+Model subscriber-seviyesinde eğitildi (bir telefon numarasının churn olasılığı). Görev 2 (segment sınıflandırma) ise **kampanya seviyesinde**, belirli bir abone olmadan çalışır (case doc: "bu kampanya hangi segmente uygun" — `/ai/classify` çağrısında `subscriberId` bile yok). Modeli kendi eğitildiği granülariteden farklı bir soruya zorlamak (örn. "bu kampanyanın segmentini tahmin et" gibi subscriber-agnostik bir soruya churn modeliyle cevap üretmeye çalışmak) yanıltıcı, savunulamaz bir sonuç verirdi. Bu yüzden Görev 2 bilinçli olarak rule-based bırakıldı: gerçek bir kullanım-verisi ML modeli eğitmek için gereken şey (abone kullanım geçmişi, önceki kampanya kabul/ret geçmişi, ARPU, şikayet kayıtları) bu case'de başlangıçta Identity Service'in kapsamı dışında tutulmuştu; kullanıcının sağladığı veri seti de subscriber-seviyesinde churn tahmini için etiketlenmişti, kampanya-seviyesinde segment sınıflandırması için değil. Doğru granülaritede yeni, ayrı bir etiketli veri seti gerektirdiği için Görev 2 kural tabanlı bırakıldı (aşağıdaki bölüm hâlâ geçerli).
 
 ## Görev 2: Segment Sınıflandırma (`segmentation/rule-based-classification.strategy.ts`)
 
@@ -62,10 +72,12 @@ Bu formül ML değildir (case dokümanı zaten matematiksel bir formül veriyor)
 
 `SegmentPrediction` tablosu her `/ai/classify` çağrısında `campaignId` ile (case henüz yaratılmadığı için) yazılır. Campaign Service bir uzman/süpervizör segment override'ı yaptığında `campaign.segment_changed` event'i yayınlar; bu servis event'i dinleyip tahminin doğru/yanlış olduğunu işaretler. Hiç override edilmemiş tahminler "doğru" kabul edilir (aksi kanıtlanana kadar) — `doğru/toplam × 100` hesaplaması `GET /ai/accuracy` ve kategori kırılımı `GET /ai/accuracy/by-category` ile süpervizör dashboard'una sunulur.
 
-## Kendi Modelinizi Eğitmek İsterseniz
+## Görev 1 İçin Yapılan Tam Olarak Bu Şablonu İzledi
 
-Bonus puanlama (+8) için kendi ML modelinizi eğitmeyi seçerseniz:
-1. `services/ai-service/prisma/schema.prisma`'ya eğitim verisi/model meta tablosu ekleyin.
-2. `ScoringStrategy`/`ClassificationStrategy` arayüzlerini uygulayan yeni sınıflar yazın (örn. `TrainedModelScoringStrategy`), Python tabanlı bir model kullanacaksanız bu sınıf modele bir REST/gRPC köprüsü olarak çalışabilir (ör. FastAPI ile ayrı bir "model server" konteyner, bu servis ona HTTP çağrısı yapar).
-3. Eğitim verinizi repository'de paylaşın (`services/ai-service/training-data/` gibi) ve eğitim sürecini bu dosyaya ekleyin.
-4. `recommendation.module.ts` / `segmentation.module.ts` içindeki `useClass` bağlamalarını yeni sınıflarla değiştirin.
+Yukarıdaki "kendi modelinizi eğitme" şablonu, Görev 1 için gerçekten uygulandı:
+1. `services/ai-service/prisma/schema.prisma`'ya `SubscriberTelemetry` (feature read-model) eklendi + `Recommendation.modelSource` (şeffaflık) eklendi.
+2. `ScoringStrategy` arayüzünü uygulayan yeni bir sınıf yazıldı (`MlScoringStrategy`, `recommendation/ml-scoring.strategy.ts`) — Python tabanlı model bir REST köprüsü (`MlChurnClient` → FastAPI `ai-ml-inference` sidecar'ı) üzerinden çağrılıyor.
+3. Eğitim verisi + eğitim script'i repository'de paylaşıldı (`services/ai-service/ml/training/`).
+4. `recommendation.module.ts`'deki strateji seçimi `useClass` yerine bir `useFactory` oldu (`AI_SCORING_STRATEGY` env değişkenine göre `ml`/`rule` arasında seçim yapar) — `RecommendationController`/`RecommendationService` katmanı hiç değişmedi.
+
+Görev 2 için aynı şablon (yeni bir kampanya-seviyesi etiketli veri seti + `ClassificationStrategy`'yi uygulayan yeni bir sınıf) izlenebilir, ancak bu depoda mevcut olmadığı için uygulanmadı (bkz. yukarıdaki "Neden Görev 2 Değil" gerekçesi).

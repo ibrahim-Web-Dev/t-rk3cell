@@ -36,6 +36,11 @@ model Recommendation {
   subscriberId          String
   score                 Float
   conversionProbability Float
+  /// "ml" when the trained churn model (services/ai-service/ml/) actually
+  /// produced this score, "rule_based" when it fell back (no telemetry for
+  /// this subscriber, or the ML sidecar was unreachable) - see
+  /// MlScoringStrategy. Purely for transparency/demo purposes.
+  modelSource           String   @default("rule_based")
   createdAt             DateTime @default(now())
 
   @@unique([campaignId, subscriberId])
@@ -95,4 +100,20 @@ model OfferFeedback {
   createdAt    DateTime @default(now())
 
   @@index([subscriberId, campaignType])
+}
+
+/// Read-model of subscriber usage/behavior telemetry (tarife, kullanım,
+/// fatura, şikayet vb. - services/ai-service/ml/training/turkcell_sahte_veri.csv
+/// ile aynı 74 kolonluk şema), yalnızca eğitilmiş churn modelini (Task 1
+/// /ai/recommend) beslemek için tutulur. Bugün yalnızca demo aboneleri için
+/// seed'lenmiştir; üretimde bu tablo OSS/BSS sistemlerinden gelen bir
+/// event/ETL akışıyla doldurulurdu (bkz. docs/AI_APPROACH.md). Bir
+/// subscriberId için satır YOKSA "telemetri mevcut değil" demektir -
+/// MlScoringStrategy bu durumda kural tabanlı stratejiye düşer.
+model SubscriberTelemetry {
+  subscriberId String   @id
+  features     Json
+  crmSegmenti  String?
+  actualChurn  Int?
+  updatedAt    DateTime @updatedAt
 }

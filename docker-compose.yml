@@ -144,6 +144,21 @@ services:
       test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3002/api/v1', r=>process.exit(0)).on('error',()=>process.exit(1))"]
       <<: *node-healthcheck
 
+  # scikit-learn eğitilmiş churn modelini (services/ai-service/ml/) servis
+  # eden dahili Python sidecar'ı - Node.js runtime'ında sklearn pipeline
+  # çalıştırılamadığı için ayrı bir konteyner. Gateway'e/dışarıya AÇILMAZ,
+  # yalnızca ai-service kendi iç ağından erişir (bkz. ai-service README).
+  ai-ml-inference:
+    build:
+      context: .
+      dockerfile: services/ai-service/ml/inference/Dockerfile
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
   ai-service:
     build:
       context: .
@@ -153,11 +168,18 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_AI_USER:-ai}:${POSTGRES_AI_PASSWORD:-ai}@postgres-ai:5432/${POSTGRES_AI_DB:-ai_db}
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-shared-secret-for-campaigncell}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+      ML_INFERENCE_URL: http://ai-ml-inference:8000
+      AI_SCORING_STRATEGY: ${AI_SCORING_STRATEGY:-ml}
     depends_on:
       postgres-ai:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      # Bilinçli olarak "service_healthy" DEĞİL: ai-service, ML sidecar'ı
+      # ayakta olmasa bile (rule-based fallback ile) çalışabilmeli - bkz.
+      # MlScoringStrategy / HybridScoringStrategy graceful degradation.
+      ai-ml-inference:
+        condition: service_started
     ports:
       - '3003:3003'
     healthcheck:

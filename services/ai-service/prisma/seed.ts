@@ -1,5 +1,15 @@
-import { PrismaClient } from '../src/generated/prisma-client';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { Prisma, PrismaClient } from '../src/generated/prisma-client';
 import { DEMO_SEED_IDS } from '@campaigncell/shared-types';
+
+interface TelemetrySeedRow {
+  demoKey: keyof typeof DEMO_SEED_IDS;
+  aboneId: string;
+  crmSegmenti: string;
+  actualChurn: number;
+  features: Record<string, unknown>;
+}
 
 const prisma = new PrismaClient();
 
@@ -34,6 +44,29 @@ async function main() {
   }
 
   console.log(`AI Service uzman read-model cache dolduruldu (${EXPERTS.length} demo uzman).`);
+
+  // MlScoringStrategy'nin gerçek churn modelini besleyebilmesi için demo
+  // abonelere gerçek turkcell_sahte_veri.csv satırlarından alınmış telemetri
+  // (bkz. services/ai-service/ml/training/) - subscriber-telemetry-seed.json
+  // extraction script'i tek seferlik çalıştırılıp bu dosyaya yazılmıştır.
+  const telemetryPath = join(__dirname, 'subscriber-telemetry-seed.json');
+  const telemetryRows: TelemetrySeedRow[] = JSON.parse(readFileSync(telemetryPath, 'utf-8'));
+
+  for (const row of telemetryRows) {
+    const subscriberId = DEMO_SEED_IDS[row.demoKey];
+    await prisma.subscriberTelemetry.upsert({
+      where: { subscriberId },
+      update: {},
+      create: {
+        subscriberId,
+        features: row.features as Prisma.InputJsonValue,
+        crmSegmenti: row.crmSegmenti,
+        actualChurn: row.actualChurn,
+      },
+    });
+  }
+
+  console.log(`AI Service abone telemetri read-model'i dolduruldu (${telemetryRows.length} demo abone).`);
 }
 
 main()
