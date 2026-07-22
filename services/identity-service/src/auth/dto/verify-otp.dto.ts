@@ -2,9 +2,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsIn, IsOptional, IsString, Matches } from 'class-validator';
 
 export class VerifyOtpDto {
-  @ApiProperty({ example: '5551234567' })
+  @ApiProperty({ example: '5551234567', description: 'Kabul edilen biçimler: 5XXXXXXXXX, 05XXXXXXXXX, 905XXXXXXXXX, +905XXXXXXXXX' })
   @IsString()
-  @Matches(/^\+?(90)?5\d{9}$/, { message: 'Geçerli bir Turkcell GSM numarası giriniz (örn: 5551234567)' })
+  @Matches(/^(0|\+?90)?5\d{9}$/, {
+    message: 'Geçerli bir Turkcell GSM numarası giriniz (örn: 5551234567 veya 05551234567)',
+  })
   gsm!: string;
 
   @ApiProperty({ example: '1234', description: 'Simülasyon: sabit kod 1234' })
@@ -33,6 +35,6 @@ export class VerifyOtpDto {
 
   @ApiPropertyOptional({ example: 'ayse@example.com' })
   @IsOptional()
-  @IsEmail()
+  @IsEmail({}, { message: 'Geçerli bir e-posta adresi giriniz (örn: ad@ornek.com)' })
   email?: string;
 }

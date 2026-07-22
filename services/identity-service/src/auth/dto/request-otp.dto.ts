@@ -2,9 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsString, Matches } from 'class-validator';
 
 export class RequestOtpDto {
-  @ApiProperty({ example: '5551234567' })
+  @ApiProperty({ example: '5551234567', description: 'Kabul edilen biçimler: 5XXXXXXXXX, 05XXXXXXXXX, 905XXXXXXXXX, +905XXXXXXXXX' })
   @IsString()
-  @Matches(/^\+?(90)?5\d{9}$/, { message: 'Geçerli bir Turkcell GSM numarası giriniz (örn: 5551234567)' })
+  @Matches(/^(0|\+?90)?5\d{9}$/, {
+    message: 'Geçerli bir Turkcell GSM numarası giriniz (örn: 5551234567 veya 05551234567)',
+  })
   gsm!: string;
 
   @ApiProperty({
