@@ -7,6 +7,7 @@ import { JwtAuthGuard, RolesGuard } from '@campaigncell/auth-kit';
 import { AllExceptionsFilter, ResponseInterceptor } from '@campaigncell/common-kit';
 import { RabbitMqService } from '@campaigncell/event-bus';
 import { PrismaModule } from './prisma/prisma.module';
+import { CommonModule } from './common/common.module';
 import { EventBusModule } from './event-bus/event-bus.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { CasesModule } from './cases/cases.module';
@@ -19,6 +20,7 @@ import { StatsModule } from './stats/stats.module';
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 200 }]),
     PrismaModule,
+    CommonModule,
     EventBusModule,
     CampaignsModule,
     CasesModule,

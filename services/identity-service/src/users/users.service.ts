@@ -1,12 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { RabbitMqService } from '@campaigncell/event-bus';
-import { EventRoutingKey, Role, StaffCreatedPayload } from '@campaigncell/shared-types';
+import { EventRoutingKey, Role, StaffCreatedPayload, StaffUpdatedPayload } from '@campaigncell/shared-types';
 import { Role as PrismaRole } from '../generated/prisma-client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { PasswordPolicyService } from '../common/password-policy';
 import { AuthService } from '../auth/auth.service';
 import { CreateStaffDto } from './dto/create-staff.dto';
+import { UpdateRoleDto } from './dto/update-role.dto';
 
 @Injectable()
 export class UsersService {
@@ -87,6 +88,49 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
     return this.toPublicUser(user);
+  }
+
+  /**
+   * Kullanıcı rol değişikliği (case doc 3.4: "Rol değişiklikleri" audit'e
+   * yazılmalı). Yalnızca ADMIN (controller seviyesinde). Aboneler personel
+   * rolüne bu uçtan yükseltilemez (abonelerin şifresi yoktur, personel girişi
+   * yapamazlar) ve admin kendi rolünü düşüremez (kilitlenme riski).
+   */
+  async updateRole(targetUserId: string, dto: UpdateRoleDto, actorUserId: string, ip: string | null) {
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException('Kullanıcı bulunamadı');
+
+    if (target.role === Role.SUBSCRIBER) {
+      throw new BadRequestException('Abone hesapları personel rolüne yükseltilemez');
+    }
+    if (targetUserId === actorUserId && dto.role !== Role.ADMIN) {
+      throw new ForbiddenException('Kendi admin rolünüzü düşüremezsiniz');
+    }
+
+    const previousRole = target.role;
+    const updated = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { role: dto.role },
+    });
+
+    // AI Service'in uzman read-model'i staff.updated event'iyle senkron kalır.
+    const payload: StaffUpdatedPayload = {
+      user_id: updated.id,
+      specialties: updated.specialties,
+      regions: updated.regions,
+    };
+    await this.rabbitMq.publish(EventRoutingKey.STAFF_UPDATED, payload);
+
+    await this.audit.record({
+      user_id: actorUserId,
+      action: 'role-changed',
+      ip,
+      result: 'SUCCESS',
+      resource_id: targetUserId,
+      detail: `Rol değişikliği: ${previousRole} -> ${dto.role}`,
+    });
+
+    return this.toPublicUser(updated);
   }
 
   private toPublicUser(user: {

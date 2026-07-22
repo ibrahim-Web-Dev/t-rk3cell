@@ -1,10 +1,15 @@
-import { Body, Controller, ForbiddenException, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser, JwtPayload, Roles } from '@campaigncell/auth-kit';
 import { Role } from '@campaigncell/shared-types';
 import { UsersService } from './users.service';
 import { CreateStaffDto } from './dto/create-staff.dto';
+import { UpdateRoleDto } from './dto/update-role.dto';
+
+function clientIp(req: Request): string | null {
+  return (req.headers['x-forwarded-for'] as string) ?? req.ip ?? null;
+}
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -20,8 +25,13 @@ export class UsersController {
   @Post('staff')
   @Roles(Role.ADMIN)
   createStaff(@Body() dto: CreateStaffDto, @CurrentUser() user: JwtPayload, @Req() req: Request) {
-    const ip = (req.headers['x-forwarded-for'] as string) ?? req.ip ?? null;
-    return this.usersService.createStaff(dto, user.sub, ip);
+    return this.usersService.createStaff(dto, user.sub, clientIp(req));
+  }
+
+  @Patch(':id/role')
+  @Roles(Role.ADMIN)
+  updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.usersService.updateRole(id, dto, user.sub, clientIp(req));
   }
 
   @Get('staff')

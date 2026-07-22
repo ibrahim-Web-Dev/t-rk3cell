@@ -9,6 +9,7 @@ import {
   Role,
 } from '@campaigncell/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditPublisher } from '../common/audit-publisher';
 import { CaseStatus } from '../generated/prisma-client';
 import { canTransition } from './case-state-machine';
 import { CompleteCaseDto } from './dto/complete-case.dto';
@@ -17,11 +18,15 @@ import { UpdateSegmentDto } from './dto/update-segment.dto';
 import { UpdatePriorityDto } from './dto/update-priority.dto';
 import { AssignExpertDto } from './dto/assign-expert.dto';
 
-type Requester = { sub: string; role: Role };
+type Requester = { sub: string; role: Role; ip?: string | null };
 
 @Injectable()
 export class CasesService {
-  constructor(private readonly prisma: PrismaService, private readonly rabbitMq: RabbitMqService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rabbitMq: RabbitMqService,
+    private readonly audit: AuditPublisher,
+  ) {}
 
   async findAll(requester: Requester) {
     const where = requester.role === Role.PERSONEL ? { assignedExpertId: requester.sub } : {};
@@ -135,12 +140,31 @@ export class CasesService {
     };
     await this.rabbitMq.publish(EventRoutingKey.CAMPAIGN_OPTIMIZED, optimizedPayload);
 
+    // Case doc 3.4: kritik durum değişikliği -> merkezi audit log.
+    this.audit.record({
+      user_id: requester.sub,
+      action: 'case-completed',
+      ip: requester.ip ?? null,
+      result: 'SUCCESS',
+      resource_id: updated.id,
+      detail: `Vaka TAMAMLANDI (kampanya=${updated.campaignId}, dönüşüm artışı=${updated.conversionLift ?? '-'})`,
+    });
+
     return updated;
   }
 
   async publish(id: string, requester: Requester) {
     // SUPERVISOR/ADMIN only (enforced at controller level) - no ownership restriction.
-    return this.transition(id, 'YAYINDA', requester.sub);
+    const updated = await this.transition(id, 'YAYINDA', requester.sub);
+    this.audit.record({
+      user_id: requester.sub,
+      action: 'case-published',
+      ip: requester.ip ?? null,
+      result: 'SUCCESS',
+      resource_id: updated.id,
+      detail: `Vaka YAYINDA'ya alındı (kampanya=${updated.campaignId})`,
+    });
+    return updated;
   }
 
   async updateSegment(id: string, requester: Requester, dto: UpdateSegmentDto) {
@@ -161,12 +185,33 @@ export class CasesService {
     };
     await this.rabbitMq.publish(EventRoutingKey.CAMPAIGN_SEGMENT_CHANGED, payload);
 
+    // Case doc 3.4: "kategori/tür değiştirme (AI override)" kritik değişiklik -> audit.
+    this.audit.record({
+      user_id: requester.sub,
+      action: 'case-segment-overridden',
+      ip: requester.ip ?? null,
+      result: 'SUCCESS',
+      resource_id: id,
+      detail: `Segment override: ${current.segment} -> ${dto.segment} (rol=${requester.role})`,
+    });
+
     return updated;
   }
 
   async updatePriority(id: string, requester: Requester, dto: UpdatePriorityDto) {
     // SUPERVISOR only (enforced at controller level).
-    return this.prisma.optimizationCase.update({ where: { id }, data: { priority: dto.priority } });
+    const current = await this.prisma.optimizationCase.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException('Optimizasyon vakası bulunamadı');
+    const updated = await this.prisma.optimizationCase.update({ where: { id }, data: { priority: dto.priority } });
+    this.audit.record({
+      user_id: requester.sub,
+      action: 'case-priority-changed',
+      ip: requester.ip ?? null,
+      result: 'SUCCESS',
+      resource_id: id,
+      detail: `Öncelik değişikliği: ${current.priority} -> ${dto.priority}`,
+    });
+    return updated;
   }
 
   async assignExpert(id: string, requester: Requester, dto: AssignExpertDto) {
@@ -199,6 +244,16 @@ export class CasesService {
       assignment_score: null,
     };
     await this.rabbitMq.publish(EventRoutingKey.CASE_ASSIGNED, assignedPayload);
+
+    // Case doc 3.4: manuel atama kritik değişiklik -> audit.
+    this.audit.record({
+      user_id: requester.sub,
+      action: 'case-manually-assigned',
+      ip: requester.ip ?? null,
+      result: 'SUCCESS',
+      resource_id: id,
+      detail: `Manuel uzman ataması: expert=${dto.expertId} (önceki durum=${current.status})`,
+    });
 
     return updated;
   }

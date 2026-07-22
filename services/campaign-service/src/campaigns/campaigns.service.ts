@@ -12,6 +12,7 @@ import {
   SubscriberRegisteredPayload,
 } from '@campaigncell/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditPublisher } from '../common/audit-publisher';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { mintSystemBearerToken } from '../ai-client/system-token';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
@@ -27,6 +28,7 @@ export class CampaignsService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly aiClient: AiClientService,
     private readonly rabbitMq: RabbitMqService,
+    private readonly audit: AuditPublisher,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -275,5 +277,39 @@ export class CampaignsService implements OnModuleInit {
     });
     if (!campaign) throw new NotFoundException('Kampanya bulunamadı');
     return campaign;
+  }
+
+  /**
+   * Kampanya silme (case doc 3.4: "Kampanya silme" audit'e yazılmalı). Yalnızca
+   * ADMIN (controller seviyesinde). İlişkili optimizasyon vakası, teklifler ve
+   * durum geçmişi tek bir transaction içinde temizlenir; işlem merkezi audit
+   * log'a kaydedilir.
+   */
+  async remove(id: string, requester: { sub: string; role: Role; ip?: string | null }) {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id },
+      include: { optimizationCase: true },
+    });
+    if (!campaign) throw new NotFoundException('Kampanya bulunamadı');
+
+    await this.prisma.$transaction(async (tx) => {
+      if (campaign.optimizationCase) {
+        await tx.caseStatusHistory.deleteMany({ where: { caseId: campaign.optimizationCase.id } });
+        await tx.optimizationCase.delete({ where: { id: campaign.optimizationCase.id } });
+      }
+      await tx.subscriberOffer.deleteMany({ where: { campaignId: id } });
+      await tx.campaign.delete({ where: { id } });
+    });
+
+    this.audit.record({
+      user_id: requester.sub,
+      action: 'campaign-deleted',
+      ip: requester.ip ?? null,
+      result: 'SUCCESS',
+      resource_id: id,
+      detail: `Kampanya silindi: ${campaign.campaignNumber} - "${campaign.title}"`,
+    });
+
+    return { deleted: true, id };
   }
 }

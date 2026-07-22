@@ -128,13 +128,10 @@ export function LoginPage() {
       login({ accessToken: result.accessToken, refreshToken: result.refreshToken }, result.user);
       navigate(homePathForRole(result.user.role));
     } catch (err) {
-      // Normalde handleRequestOtp bu durumları SMS'ten önce yakalar; bu yalnızca
-      // aradaki süre içinde hesap durumu değiştiyse devreye giren bir güvenlik ağıdır.
-      if (handleAccountConflict(err)) {
-        setOtpSent(false);
-      } else {
-        setError(apiErrorMessage(err, 'Doğrulama başarısız'));
-      }
+      // Bu aşamadaki 409, GSM değil E-POSTA çakışmasıdır (GSM çakışması zaten
+      // handleRequestOtp'de SMS'ten önce yakalanır). Bu yüzden "giriş yap"
+      // popup'ı yerine OTP modalında satır içi net mesaj gösterilir.
+      setError(apiErrorMessage(err, 'Doğrulama başarısız'));
     } finally {
       setLoading(false);
     }

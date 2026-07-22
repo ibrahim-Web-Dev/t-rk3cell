@@ -76,8 +76,6 @@ export class AuthService {
       throw new BadRequestException('Geçersiz veya süresi dolmuş kod');
     }
 
-    await this.prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } });
-
     let user = await this.prisma.user.findUnique({ where: { gsm } });
 
     // "intent" tells us whether the user meant to log into an existing
@@ -92,20 +90,42 @@ export class AuthService {
       if (!dto.firstName || !dto.lastName) {
         throw new BadRequestException('Kayıt için ad ve soyad zorunludur');
       }
-      user = await this.prisma.user.create({
-        data: {
-          role: Role.SUBSCRIBER,
-          gsm,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          email: dto.email,
-        },
-      });
+      // E-posta opsiyonel ama unique - başka bir hesapta kullanılıyorsa net bir
+      // hata döndür (aksi halde Prisma P2002 ham bir 500'e dönüşürdü).
+      if (dto.email) {
+        const emailOwner = await this.prisma.user.findUnique({ where: { email: dto.email } });
+        if (emailOwner) {
+          throw new ConflictException('Bu e-posta adresi zaten kullanımda. Farklı bir e-posta deneyin.');
+        }
+      }
+      try {
+        user = await this.prisma.user.create({
+          data: {
+            role: Role.SUBSCRIBER,
+            gsm,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            email: dto.email,
+          },
+        });
+      } catch (err) {
+        // GSM/e-posta üzerinde yarış durumu (aynı anda iki kayıt) - unique
+        // constraint ihlalini ham 500 yerine anlaşılır bir çakışmaya çevir.
+        if ((err as { code?: string }).code === 'P2002') {
+          throw new ConflictException('Bu GSM veya e-posta zaten kayıtlı. Giriş yapmayı deneyin.');
+        }
+        throw err;
+      }
       const payload: SubscriberRegisteredPayload = { subscriber_id: user.id };
       await this.rabbitMq.publish(EventRoutingKey.SUBSCRIBER_REGISTERED, payload);
     } else if (!user) {
       throw new NotFoundException('Bu numara ile kayıtlı bir hesap bulunamadı. Kayıt olabilirsiniz.');
     }
+
+    // OTP yalnızca burada (tüm doğrulamalar geçtikten sonra) tüketilir - aksi
+    // halde bir e-posta/ad-soyad hatası kodu boşa harcar ve kullanıcı yeni
+    // kod istemek zorunda kalırdı.
+    await this.prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } });
 
     const tokenPair = await this.tokens.issueTokenPair(user, ip);
     await this.audit.record({
