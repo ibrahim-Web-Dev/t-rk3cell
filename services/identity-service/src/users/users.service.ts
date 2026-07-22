@@ -121,13 +121,18 @@ export class UsersService {
     };
     await this.rabbitMq.publish(EventRoutingKey.STAFF_UPDATED, payload);
 
+    // Detay, hedef kullanıcıyı da içerir - audit tablosundaki "Kullanıcı"
+    // sütunu işlemi YAPAN admini gösterir; kimin rolünün değiştiği burada
+    // açıkça yazılır (aksi halde "PERSONEL -> SUPERVISOR" kimin diye belirsiz).
+    const targetName = [target.firstName, target.lastName].filter(Boolean).join(' ');
+    const targetLabel = target.email ?? (targetName || target.gsm || targetUserId);
     await this.audit.record({
       user_id: actorUserId,
       action: 'role-changed',
       ip,
       result: 'SUCCESS',
       resource_id: targetUserId,
-      detail: `Rol değişikliği: ${previousRole} -> ${dto.role}`,
+      detail: `${targetLabel}${targetName && target.email ? ` (${targetName})` : ''}: ${previousRole} -> ${dto.role}`,
     });
 
     return this.toPublicUser(updated);
