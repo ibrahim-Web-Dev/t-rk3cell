@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Derleme + unit testler (hızlı, altyapı gerektirmez)
+  # ---------------------------------------------------------------------------
+  build-and-unit:
+    name: Build & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # Prisma client'ları her servis için üret (derleme için gerekli).
+      - name: Generate Prisma clients
+        run: |
+          npx prisma generate --schema=services/identity-service/prisma/schema.prisma
+          npx prisma generate --schema=services/campaign-service/prisma/schema.prisma
+          npx prisma generate --schema=services/ai-service/prisma/schema.prisma
+          npx prisma generate --schema=services/gamification-service/prisma/schema.prisma
+
+      - name: Build shared packages + services + gateway + frontend
+        run: npm run build:all
+
+      - name: Unit tests
+        run: npm run test:unit
+
+  # ---------------------------------------------------------------------------
+  # Uçtan uca: tüm sistemi docker compose ile ayağa kaldır, seed, e2e testleri
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: Docker Compose E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies (e2e runner)
+        run: npm install --no-audit --no-fund
+
+      - name: Build & start the full stack
+        run: docker compose up -d --build
+
+      - name: Wait for gateway health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/health > /dev/null; then
+              echo "Gateway ready"; exit 0
+            fi
+            sleep 5
+          done
+          echo "Gateway did not become healthy in time"; docker compose ps; docker compose logs --tail=50; exit 1
+
+      - name: Seed demo data
+        run: |
+          docker compose exec -T identity-service npm run seed
+          docker compose exec -T ai-service npm run seed
+
+      - name: Run e2e tests
+        run: npm run test:e2e
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
