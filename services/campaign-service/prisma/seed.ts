@@ -95,6 +95,7 @@ async function main() {
   let seq = 0;
   let caseCount = 0;
   let healthyCount = 0;
+  const healthyCampaignIds: string[] = [];
 
   for (let i = 0; i < CAMPAIGN_TITLES.length; i++) {
     const { title, type } = CAMPAIGN_TITLES[i];
@@ -133,6 +134,7 @@ async function main() {
           conversionProbability,
         },
       });
+      healthyCampaignIds.push(campaign.id);
       healthyCount += 1;
       continue;
     }
@@ -200,6 +202,25 @@ async function main() {
     });
   }
 
+  // Her demo abonesinin gelen ekranında EN AZ 2 görünür (skor ≥ 0.60) teklif
+  // olsun - aksi halde bazı aboneler boş teklif ekranıyla karşılaşıyordu.
+  // Sağlıklı kampanyalara yüksek skorlu teklifler bağlanır (upsert: zaten varsa
+  // skoru görünür seviyeye yükseltir, unique çakışması olmaz).
+  let guaranteedOffers = 0;
+  for (let s = 0; s < SUBSCRIBER_IDS.length; s++) {
+    const subscriberId = SUBSCRIBER_IDS[s];
+    for (let k = 0; k < 2; k++) {
+      const campaignId = healthyCampaignIds[(s * 2 + k) % healthyCampaignIds.length];
+      const score = Math.round((0.7 + ((s + k) % 3) * 0.06) * 1000) / 1000; // 0.70 - 0.82
+      await prisma.subscriberOffer.upsert({
+        where: { campaignId_subscriberId: { campaignId, subscriberId } },
+        create: { campaignId, subscriberId, score, conversionProbability: score },
+        update: { score, conversionProbability: score },
+      });
+      guaranteedOffers += 1;
+    }
+  }
+
   const year = new Date().getFullYear();
   await prisma.campaignSequence.upsert({
     where: { year },
@@ -208,7 +229,7 @@ async function main() {
   });
 
   console.log(
-    `Campaign Service demo verisi yüklendi: ${CAMPAIGN_TITLES.length} kampanya (${caseCount} optimizasyon vakası açık, ${healthyCount} sağlıklı/vaka açılmamış).`,
+    `Campaign Service demo verisi yüklendi: ${CAMPAIGN_TITLES.length} kampanya (${caseCount} optimizasyon vakası açık, ${healthyCount} sağlıklı/vaka açılmamış), ${guaranteedOffers} garanti görünür abone teklifi.`,
   );
 }
 

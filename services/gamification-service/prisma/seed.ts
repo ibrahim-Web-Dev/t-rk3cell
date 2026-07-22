@@ -28,20 +28,41 @@ interface DemoExpert {
   primarySegment: string;
 }
 
+// Puanlar bilinçli olarak 4 seviyeye yayıldı (Bronz/Gümüş/Altın/Platin) - böylece
+// liderlik ve profil ekranlarında herkes Bronz görünmüyor. Sayaçlar puanla
+// tutarlı; yüksek seviyeli uzmanlar rozet eşiklerini de aşıyor (aşağıda inline
+// değerlendiriliyor).
 const DEMO_EXPERTS: DemoExpert[] = [
-  { userId: DEMO_SEED_IDS.EXPERT_1, totalPoints: 145, completedCaseCount: 3, fastCompletionCount: 1, conversionExceedCount: 1, riskliKayipRescueCount: 3, primarySegment: 'RISKLI_KAYIP' },
-  { userId: DEMO_SEED_IDS.EXPERT_2, totalPoints: 210, completedCaseCount: 4, fastCompletionCount: 2, conversionExceedCount: 2, riskliKayipRescueCount: 0, primarySegment: 'YENI_ABONE' },
-  { userId: DEMO_SEED_IDS.EXPERT_3, totalPoints: 85, completedCaseCount: 2, fastCompletionCount: 1, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'PASIF' },
-  { userId: DEMO_SEED_IDS.EXPERT_4, totalPoints: 320, completedCaseCount: 5, fastCompletionCount: 2, conversionExceedCount: 3, riskliKayipRescueCount: 2, primarySegment: 'RISKLI_KAYIP' },
-  { userId: DEMO_SEED_IDS.EXPERT_5, totalPoints: 60, completedCaseCount: 1, fastCompletionCount: 0, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'YENI_ABONE' },
-  { userId: DEMO_SEED_IDS.EXPERT_6, totalPoints: 95, completedCaseCount: 2, fastCompletionCount: 0, conversionExceedCount: 1, riskliKayipRescueCount: 0, primarySegment: 'PASIF' },
-  { userId: DEMO_SEED_IDS.EXPERT_7, totalPoints: 275, completedCaseCount: 4, fastCompletionCount: 1, conversionExceedCount: 2, riskliKayipRescueCount: 4, primarySegment: 'RISKLI_KAYIP' },
-  { userId: DEMO_SEED_IDS.EXPERT_8, totalPoints: 130, completedCaseCount: 3, fastCompletionCount: 1, conversionExceedCount: 1, riskliKayipRescueCount: 0, primarySegment: 'YUKSEK_DEGER' },
+  // PLATIN (3000+)
+  { userId: DEMO_SEED_IDS.EXPERT_11, totalPoints: 3450, completedCaseCount: 58, fastCompletionCount: 14, conversionExceedCount: 12, riskliKayipRescueCount: 11, primarySegment: 'RISKLI_KAYIP' },
+  // ALTIN (1500-2999)
+  { userId: DEMO_SEED_IDS.EXPERT_4, totalPoints: 2100, completedCaseCount: 40, fastCompletionCount: 11, conversionExceedCount: 10, riskliKayipRescueCount: 6, primarySegment: 'RISKLI_KAYIP' },
+  { userId: DEMO_SEED_IDS.EXPERT_7, totalPoints: 1650, completedCaseCount: 33, fastCompletionCount: 7, conversionExceedCount: 11, riskliKayipRescueCount: 12, primarySegment: 'RISKLI_KAYIP' },
+  // GÜMÜŞ (500-1499)
+  { userId: DEMO_SEED_IDS.EXPERT_2, totalPoints: 1180, completedCaseCount: 24, fastCompletionCount: 10, conversionExceedCount: 5, riskliKayipRescueCount: 0, primarySegment: 'YENI_ABONE' },
+  { userId: DEMO_SEED_IDS.EXPERT_10, totalPoints: 890, completedCaseCount: 18, fastCompletionCount: 4, conversionExceedCount: 6, riskliKayipRescueCount: 0, primarySegment: 'PASIF' },
+  { userId: DEMO_SEED_IDS.EXPERT_8, totalPoints: 640, completedCaseCount: 13, fastCompletionCount: 3, conversionExceedCount: 4, riskliKayipRescueCount: 0, primarySegment: 'YUKSEK_DEGER' },
+  { userId: DEMO_SEED_IDS.EXPERT_1, totalPoints: 540, completedCaseCount: 11, fastCompletionCount: 2, conversionExceedCount: 3, riskliKayipRescueCount: 4, primarySegment: 'RISKLI_KAYIP' },
+  // BRONZ (0-499)
+  { userId: DEMO_SEED_IDS.EXPERT_12, totalPoints: 410, completedCaseCount: 8, fastCompletionCount: 2, conversionExceedCount: 2, riskliKayipRescueCount: 0, primarySegment: 'YUKSEK_DEGER' },
+  { userId: DEMO_SEED_IDS.EXPERT_6, totalPoints: 290, completedCaseCount: 6, fastCompletionCount: 1, conversionExceedCount: 1, riskliKayipRescueCount: 0, primarySegment: 'PASIF' },
+  { userId: DEMO_SEED_IDS.EXPERT_3, totalPoints: 180, completedCaseCount: 4, fastCompletionCount: 1, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'PASIF' },
+  { userId: DEMO_SEED_IDS.EXPERT_5, totalPoints: 95, completedCaseCount: 2, fastCompletionCount: 0, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'YENI_ABONE' },
   { userId: DEMO_SEED_IDS.EXPERT_9, totalPoints: 45, completedCaseCount: 1, fastCompletionCount: 0, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'YENI_ABONE' },
-  { userId: DEMO_SEED_IDS.EXPERT_10, totalPoints: 190, completedCaseCount: 3, fastCompletionCount: 1, conversionExceedCount: 1, riskliKayipRescueCount: 0, primarySegment: 'PASIF' },
-  { userId: DEMO_SEED_IDS.EXPERT_11, totalPoints: 520, completedCaseCount: 6, fastCompletionCount: 3, conversionExceedCount: 4, riskliKayipRescueCount: 5, primarySegment: 'RISKLI_KAYIP' },
-  { userId: DEMO_SEED_IDS.EXPERT_12, totalPoints: 70, completedCaseCount: 1, fastCompletionCount: 0, conversionExceedCount: 0, riskliKayipRescueCount: 0, primarySegment: 'YUKSEK_DEGER' },
 ];
+
+/** Rozet eşikleri (case doc 6.2) - seed'de her uzmanın hak ettiği tüm rozetleri vermek için. */
+function earnedBadges(e: DemoExpert): string[] {
+  const badges: string[] = [];
+  if (e.completedCaseCount >= 1) badges.push('ILK_KAMPANYA');
+  if (e.fastCompletionCount >= 10) badges.push('HIZ_USTASI');
+  if (e.conversionExceedCount >= 10) badges.push('DONUSUM_KRALI');
+  if (e.riskliKayipRescueCount >= 10) badges.push('CHURN_AVCISI');
+  if (e.completedCaseCount >= 50) badges.push('UZMAN');
+  // MARATONCU (bir günde 20) demo verisinde bilinçli olarak verilmez - grid'de
+  // kilitli bir rozet kalması "kilitli/açık" gösterimini canlı tutar.
+  return badges;
+}
 
 function levelFor(points: number): string {
   if (points >= 3000) return 'PLATIN';
@@ -88,9 +109,10 @@ async function main() {
       data: { userId: expert.userId, points: expert.totalPoints, reason: 'DEMO_SEED' },
     });
 
-    // case doc 6.2: completedCaseCount >= 1 -> "İlk Kampanya" rozeti kazanılmış olur.
-    if (expert.completedCaseCount >= 1) {
-      await prisma.badge.create({ data: { userId: expert.userId, badgeCode: 'ILK_KAMPANYA' } });
+    // case doc 6.2: uzmanın hak ettiği tüm rozetleri ver (yüksek seviyeliler
+    // birden fazla rozet taşır - profil rozet grid'i canlı görünsün).
+    for (const badgeCode of earnedBadges(expert)) {
+      await prisma.badge.create({ data: { userId: expert.userId, badgeCode } });
     }
 
     // Haftalık = toplam puan; günlük = bugünün dilimi (haftalık ≥ günlük).
