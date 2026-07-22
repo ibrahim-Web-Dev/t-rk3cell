@@ -9,10 +9,12 @@ import { OtpModal } from '../shared/components/OtpModal';
 
 type Tab = 'subscriber' | 'staff';
 type SubscriberMode = 'login' | 'register';
+type RegisterStep = 'phone' | 'profile';
 
 export function LoginPage() {
   const [tab, setTab] = useState<Tab>('subscriber');
   const [subscriberMode, setSubscriberMode] = useState<SubscriberMode>('login');
+  const [registerStep, setRegisterStep] = useState<RegisterStep>('phone');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -25,6 +27,7 @@ export function LoginPage() {
   const [code, setCode] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
 
   // staff flow state
   const [email, setEmail] = useState('');
@@ -32,9 +35,19 @@ export function LoginPage() {
 
   function selectSubscriberMode(mode: SubscriberMode) {
     setSubscriberMode(mode);
+    setRegisterStep('phone');
     setOtpSent(false);
     setCode('');
+    setFirstName('');
+    setLastName('');
+    setRegEmail('');
     setError(null);
+  }
+
+  function handlePhoneNext(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setRegisterStep('profile');
   }
 
   async function handleRequestOtp(e: FormEvent) {
@@ -83,6 +96,7 @@ export function LoginPage() {
         code,
         firstName: subscriberMode === 'register' ? firstName : undefined,
         lastName: subscriberMode === 'register' ? lastName : undefined,
+        email: subscriberMode === 'register' && regEmail ? regEmail : undefined,
       });
       login({ accessToken: result.accessToken, refreshToken: result.refreshToken }, result.user);
       navigate(homePathForRole(result.user.role));
@@ -141,23 +155,61 @@ export function LoginPage() {
           </div>
         )}
 
-        {tab === 'subscriber' && (
+        {tab === 'subscriber' && subscriberMode === 'login' && (
+          <form onSubmit={handleRequestOtp}>
+            <div className="form-field">
+              <label>GSM Numarası</label>
+              <input value={gsm} onChange={(e) => setGsm(e.target.value)} placeholder="5551234567" required />
+            </div>
+            <button className="btn btn-login-primary" type="submit" disabled={loading}>
+              Giriş Yap
+            </button>
+          </form>
+        )}
+
+        {tab === 'subscriber' && subscriberMode === 'register' && registerStep === 'phone' && (
           <>
-            <form onSubmit={handleRequestOtp}>
+            <form onSubmit={handlePhoneNext}>
               <div className="form-field">
                 <label>GSM Numarası</label>
                 <input value={gsm} onChange={(e) => setGsm(e.target.value)} placeholder="5551234567" required />
               </div>
-              <button className="btn btn-login-primary" type="submit" disabled={loading}>
-                {subscriberMode === 'register' ? 'Kayıt Ol' : 'Giriş Yap'}
+              <button className="btn btn-login-primary" type="submit">
+                Devam Et
               </button>
             </form>
+            <button type="button" className="login-back-link" onClick={() => selectSubscriberMode('login')}>
+              Zaten hesabınız var mı? Giriş yapın
+            </button>
+          </>
+        )}
 
-            {subscriberMode === 'register' ? (
-              <button type="button" className="login-back-link" onClick={() => selectSubscriberMode('login')}>
-                Zaten hesabınız var mı? Giriş yapın
+        {tab === 'subscriber' && subscriberMode === 'register' && registerStep === 'profile' && (
+          <>
+            <form onSubmit={handleRequestOtp}>
+              <div className="form-field">
+                <label>Ad</label>
+                <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+              </div>
+              <div className="form-field">
+                <label>Soyad</label>
+                <input value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+              </div>
+              <div className="form-field">
+                <label>GSM Numarası</label>
+                <input value={gsm} disabled />
+              </div>
+              <div className="form-field">
+                <label>E-posta (opsiyonel)</label>
+                <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="ornek@mail.com" />
+              </div>
+              <button className="btn btn-login-primary" type="submit" disabled={loading}>
+                Kayıt Ol
               </button>
-            ) : null}
+            </form>
+            <button type="button" className="login-back-link" onClick={() => setRegisterStep('phone')}>
+              GSM numarasını değiştir
+            </button>
           </>
         )}
 
@@ -193,15 +245,10 @@ export function LoginPage() {
         <OtpModal
           gsm={gsm}
           sentAt={otpSentAt}
-          mode={subscriberMode}
           code={code}
-          firstName={firstName}
-          lastName={lastName}
           loading={loading}
           error={error}
           onCodeChange={setCode}
-          onFirstNameChange={setFirstName}
-          onLastNameChange={setLastName}
           onSubmit={handleVerifyOtp}
           onResend={handleResendOtp}
           onClose={handleCloseOtpModal}

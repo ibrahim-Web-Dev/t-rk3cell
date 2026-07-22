@@ -18,15 +18,10 @@ function formatMmSs(totalSeconds: number): string {
 interface OtpModalProps {
   gsm: string;
   sentAt: number;
-  mode: 'login' | 'register';
   code: string;
-  firstName: string;
-  lastName: string;
   loading: boolean;
   error: string | null;
   onCodeChange: (value: string) => void;
-  onFirstNameChange: (value: string) => void;
-  onLastNameChange: (value: string) => void;
   onSubmit: (e: FormEvent) => void;
   onResend: () => void;
   onClose: () => void;
@@ -35,15 +30,10 @@ interface OtpModalProps {
 export function OtpModal({
   gsm,
   sentAt,
-  mode,
   code,
-  firstName,
-  lastName,
   loading,
   error,
   onCodeChange,
-  onFirstNameChange,
-  onLastNameChange,
   onSubmit,
   onResend,
   onClose,
@@ -94,19 +84,6 @@ export function OtpModal({
               className="otp-code-input"
             />
           </div>
-
-          {mode === 'register' && (
-            <>
-              <div className="form-field">
-                <label>Ad</label>
-                <input value={firstName} onChange={(e) => onFirstNameChange(e.target.value)} required />
-              </div>
-              <div className="form-field">
-                <label>Soyad</label>
-                <input value={lastName} onChange={(e) => onLastNameChange(e.target.value)} required />
-              </div>
-            </>
-          )}
 
           <div className="otp-timer" aria-live="polite">
             {expired ? (
