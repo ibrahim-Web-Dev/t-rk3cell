@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Role, SegmentType } from '@campaigncell/shared-types';
-import { createStaff, listStaff } from '../../api/usersApi';
+import { createStaff, listStaff, updateStaffRole } from '../../api/usersApi';
 import { apiErrorMessage } from '../../api/client';
 import { AuthUser } from '../../auth/authStore';
 import { EXPERT_SPECIALTY_LABELS, ROLE_LABELS } from '../../shared/labels';
 import { useToast } from '../../shared/ToastContext';
+import { useAuth } from '../../auth/AuthContext';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner';
 import { ErrorState } from '../../shared/components/ErrorState';
 
@@ -14,6 +15,8 @@ export function StaffPage() {
   const [staff, setStaff] = useState<AuthUser[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { show } = useToast();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,6 +38,16 @@ export function StaffPage() {
 
   function toggle(list: string[], value: string, setter: (v: string[]) => void) {
     setter(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+  }
+
+  async function handleRoleChange(userId: string, newRole: Role) {
+    try {
+      await updateStaffRole(userId, newRole);
+      show('success', 'Rol güncellendi');
+      load();
+    } catch (err) {
+      show('error', apiErrorMessage(err, 'Rol güncellenemedi'));
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -142,7 +155,19 @@ export function StaffPage() {
                     {s.firstName} {s.lastName}
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>{s.email}</div>
                   </td>
-                  <td>{ROLE_LABELS[s.role]}</td>
+                  <td>
+                    <select
+                      value={s.role}
+                      onChange={(e) => handleRoleChange(s.id, e.target.value as Role)}
+                      disabled={s.id === currentUserId}
+                      title={s.id === currentUserId ? 'Kendi rolünüzü değiştiremezsiniz' : 'Rolü değiştir'}
+                      style={{ padding: '6px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                    >
+                      <option value={Role.PERSONEL}>{ROLE_LABELS.PERSONEL}</option>
+                      <option value={Role.SUPERVISOR}>{ROLE_LABELS.SUPERVISOR}</option>
+                      <option value={Role.ADMIN}>{ROLE_LABELS.ADMIN}</option>
+                    </select>
+                  </td>
                   <td>{s.specialties.map((sp) => EXPERT_SPECIALTY_LABELS[sp] ?? sp).join(', ') || '-'}</td>
                 </tr>
               ))}

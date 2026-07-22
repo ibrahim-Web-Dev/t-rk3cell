@@ -37,6 +37,7 @@ Swagger: `http://localhost:3001/docs`
 | POST | `/users/staff` | ADMIN | Personel hesabı oluşturur, `staff.created` event yayınlar |
 | GET | `/users/staff` | SUPERVISOR, ADMIN | Personel listesi (manuel atama için) |
 | GET | `/users/:id` | SUPERVISOR, ADMIN veya kendi kaydı | Kullanıcı detayı |
+| PATCH | `/users/:id/role` | ADMIN | Personel rolünü değiştirir; `staff.updated` + audit `role-changed` (case doc 3.4) |
 | GET | `/audit-logs` | ADMIN | Merkezi audit log |
 
 ## Environment Değişkenleri

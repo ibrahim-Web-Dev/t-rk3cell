@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Trash2 } from 'lucide-react';
+import { Role } from '@campaigncell/shared-types';
 import { listCases } from '../../api/caseApi';
 import { listStaff } from '../../api/usersApi';
+import { deleteCampaign } from '../../api/campaignApi';
 import { apiErrorMessage } from '../../api/client';
 import { OptimizationCase } from '../../types';
 import { AuthUser } from '../../auth/authStore';
+import { useAuth } from '../../auth/AuthContext';
+import { useToast } from '../../shared/ToastContext';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner';
 import { ErrorState } from '../../shared/components/ErrorState';
 import { EmptyState } from '../../shared/components/EmptyState';
@@ -14,6 +19,10 @@ export function AllCasesPage() {
   const [cases, setCases] = useState<OptimizationCase[] | null>(null);
   const [staff, setStaff] = useState<AuthUser[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { show } = useToast();
+  const isAdmin = user?.role === Role.ADMIN;
 
   function load() {
     setError(null);
@@ -27,6 +36,20 @@ export function AllCasesPage() {
   }
 
   useEffect(load, []);
+
+  async function handleDelete(campaignId: string, title: string) {
+    if (!window.confirm(`"${title}" kampanyası ve ilişkili vaka/teklifler silinecek. Emin misiniz?`)) return;
+    setDeletingId(campaignId);
+    try {
+      await deleteCampaign(campaignId);
+      show('success', 'Kampanya silindi');
+      load();
+    } catch (err) {
+      show('error', apiErrorMessage(err, 'Kampanya silinemedi'));
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
 
@@ -79,6 +102,7 @@ export function AllCasesPage() {
               <th>Durum</th>
               <th>Atanan Uzman</th>
               <th>SLA</th>
+              {isAdmin && <th style={{ textAlign: 'right' }}>İşlem</th>}
             </tr>
           </thead>
           <tbody>
@@ -94,6 +118,18 @@ export function AllCasesPage() {
                   <td>{STATUS_LABELS[c.status]}</td>
                   <td>{expert ? `${expert.firstName} ${expert.lastName}` : c.assignedExpertId ? c.assignedExpertId.slice(0, 8) : '—'}</td>
                   <td>{formatRemaining(c.slaDueAt, c.completedAt)}</td>
+                  {isAdmin && (
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        disabled={deletingId === c.campaignId}
+                        onClick={() => handleDelete(c.campaignId, c.campaign?.title ?? c.campaignId)}
+                        title="Kampanyayı sil"
+                      >
+                        <Trash2 size={14} /> {deletingId === c.campaignId ? 'Siliniyor…' : 'Sil'}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}

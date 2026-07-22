@@ -4,7 +4,7 @@ import { listStaffDirectory, StaffDirectoryEntry } from '../../api/usersApi';
 import { apiErrorMessage } from '../../api/client';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner';
 import { ErrorState } from '../../shared/components/ErrorState';
-import { BADGE_LABELS, LEVEL_LABELS } from '../../shared/labels';
+import { ALL_BADGE_CODES, BADGE_DESCRIPTIONS, BADGE_EMOJIS, BADGE_LABELS, LEVEL_LABELS } from '../../shared/labels';
 import { useRealtime } from '../../realtime/useRealtime';
 import { useToast } from '../../shared/ToastContext';
 import { useAuth } from '../../auth/AuthContext';
@@ -82,18 +82,31 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-        <h3>Rozetler</h3>
-        {profile.badges.length === 0 ? (
-          <p style={{ color: 'var(--color-muted)' }}>Henüz rozet kazanılmadı.</p>
-        ) : (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {profile.badges.map((b) => (
-              <span key={b.badgeCode} className="badge-pill pill-warning">
-                🏆 {BADGE_LABELS[b.badgeCode] ?? b.badgeCode}
-              </span>
-            ))}
-          </div>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+          <h3 style={{ margin: 0 }}>Rozetler</h3>
+          <span style={{ color: 'var(--color-muted)', fontSize: '0.85rem' }}>
+            {profile.badges.length} / {ALL_BADGE_CODES.length} kazanıldı
+          </span>
+        </div>
+        <div className="badge-grid">
+          {ALL_BADGE_CODES.map((code) => {
+            const earned = profile.badges.find((b) => b.badgeCode === code);
+            return (
+              <div key={code} className={`badge-card ${earned ? 'earned' : 'locked'}`}>
+                <div className="badge-card-emoji">{earned ? BADGE_EMOJIS[code] : '🔒'}</div>
+                <div className="badge-card-body">
+                  <div className="badge-card-title">{BADGE_LABELS[code] ?? code}</div>
+                  <div className="badge-card-desc">{BADGE_DESCRIPTIONS[code]}</div>
+                  {earned && (
+                    <div className="badge-card-earned">
+                      Kazanıldı · {new Date(earned.earnedAt).toLocaleDateString('tr-TR')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-2">

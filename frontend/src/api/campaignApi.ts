@@ -22,3 +22,8 @@ export function listCampaigns() {
 export function getCampaign(id: string) {
   return unwrap<Campaign>(apiClient.get(`/campaigns/${id}`));
 }
+
+/** Kampanyayı ve ilişkili vaka/teklifleri siler (ADMIN). Audit'e "campaign-deleted" olarak yazılır. */
+export function deleteCampaign(id: string) {
+  return unwrap<{ deleted: boolean; id: string }>(apiClient.delete(`/campaigns/${id}`));
+}

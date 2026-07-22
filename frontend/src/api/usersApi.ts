@@ -24,6 +24,11 @@ export function listStaff() {
   return unwrap<AuthUser[]>(apiClient.get('/users/staff'));
 }
 
+/** Personel rolünü değiştirir (ADMIN). Audit'e "role-changed" olarak yazılır. */
+export function updateStaffRole(userId: string, role: Role) {
+  return unwrap<AuthUser>(apiClient.patch(`/users/${userId}/role`, { role }));
+}
+
 export interface StaffDirectoryEntry {
   id: string;
   firstName: string | null;

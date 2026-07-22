@@ -7,6 +7,29 @@ export const BADGE_LABELS: Record<string, string> = {
   UZMAN: 'Uzman',
 };
 
+/** Rozet kazanma koşulları (case doc 6.2) - kilitli rozetlerde ipucu olarak gösterilir. */
+export const BADGE_DESCRIPTIONS: Record<string, string> = {
+  ILK_KAMPANYA: 'İlk optimizasyonu tamamla',
+  HIZ_USTASI: '2 saatin altında 10 optimizasyon',
+  DONUSUM_KRALI: '10 kampanyada dönüşüm hedefini aş',
+  MARATONCU: 'Bir günde 20 optimizasyon',
+  CHURN_AVCISI: '10 RISKLI_KAYIP vakasını kurtar',
+  UZMAN: 'Tek segmentte 50 optimizasyon',
+};
+
+/** Rozet emojileri - görsel çeşitlilik için. */
+export const BADGE_EMOJIS: Record<string, string> = {
+  ILK_KAMPANYA: '🎯',
+  HIZ_USTASI: '⚡',
+  DONUSUM_KRALI: '👑',
+  MARATONCU: '🏃',
+  CHURN_AVCISI: '🛡️',
+  UZMAN: '🎓',
+};
+
+/** Tüm rozetlerin sabit sırası (kilitli/açık gösterimi için). */
+export const ALL_BADGE_CODES = ['ILK_KAMPANYA', 'HIZ_USTASI', 'DONUSUM_KRALI', 'MARATONCU', 'CHURN_AVCISI', 'UZMAN'] as const;
+
 export const LEVEL_LABELS: Record<string, string> = {
   BRONZ: 'Bronz',
   GUMUS: 'Gümüş',

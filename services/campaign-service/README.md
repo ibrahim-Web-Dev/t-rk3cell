@@ -49,6 +49,7 @@ Swagger: `http://localhost:3002/docs`
 | POST | `/campaigns` | PERSONEL | Kampanya oluşturur, AI classify+assign+recommend tetiklenir |
 | GET | `/campaigns` | PERSONEL(kendi oluşturduğu + atandığı vaka)/SUPERVISOR/ADMIN | Kampanya listesi (vaka açılmamış "sağlıklı" kampanyalar dahil) |
 | GET | `/campaigns/:id` | PERSONEL(kendi oluşturduğu + atandığı vaka)/SUPERVISOR/ADMIN | Kampanya detayı |
+| DELETE | `/campaigns/:id` | ADMIN | Kampanya + ilişkili vaka/teklif/geçmiş siler; audit `campaign-deleted` (case doc 3.4) |
 | GET | `/cases` | PERSONEL(atanan)/SUPERVISOR/ADMIN | Optimizasyon vakaları |
 | GET | `/cases/queue/pending` | SUPERVISOR, ADMIN | BELIRSIZ / atanmamış vakalar |
 | GET | `/cases/:id` | PERSONEL(atanan)/SUPERVISOR/ADMIN | Vaka detayı |

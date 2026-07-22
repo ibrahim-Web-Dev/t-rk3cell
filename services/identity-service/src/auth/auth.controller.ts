@@ -13,27 +13,32 @@ function clientIp(req: Request): string | null {
   return (req.headers['x-forwarded-for'] as string) ?? req.ip ?? null;
 }
 
+// Kimlik endpoint'lerine özel brute-force limiti (dakikada). Hesap kilitleme
+// (5 hatalı deneme) asıl brute-force savunmasıdır; bu throttle onu tamamlar
+// ama demo/e2e sırasında tıkamayacak kadar makul tutulur. Env ile ayarlanır.
+const AUTH_THROTTLE_LIMIT = Number(process.env.AUTH_THROTTLE_LIMIT ?? 30);
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: 60_000 } })
   @Post('subscriber/otp/request')
   requestOtp(@Body() dto: RequestOtpDto) {
     return this.authService.requestOtp(dto);
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: 60_000 } })
   @Post('subscriber/otp/verify')
   verifyOtp(@Body() dto: VerifyOtpDto, @Req() req: Request) {
     return this.authService.verifyOtp(dto, clientIp(req));
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: 60_000 } })
   @Post('staff/login')
   staffLogin(@Body() dto: StaffLoginDto, @Req() req: Request) {
     return this.authService.staffLogin(dto, clientIp(req));
