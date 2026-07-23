@@ -1,8 +1,10 @@
 import { createContext, useContext, useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, X, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Play, Rocket, Shield } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { staffLogin, requestOtp, verifyOtp } from '../api/authApi';
+import { ScenarioRunner } from './ScenarioMode';
+import { SecurityRunner } from './SecurityMode';
 
 type TourRole = 'PERSONEL' | 'SUPERVISOR' | 'ADMIN' | 'SUBSCRIBER';
 
@@ -38,8 +40,10 @@ const DEMO_EMAIL: Record<Exclude<TourRole, 'SUBSCRIBER'>, string> = {
   ADMIN: 'admin@campaigncell.com',
 };
 
+type DemoMode = 'tour' | 'scenario' | 'security' | null;
+
 interface PresentationContextValue {
-  start: () => void;
+  start: (mode: Exclude<DemoMode, null>) => void;
   active: boolean;
 }
 
@@ -52,12 +56,15 @@ export function usePresentation(): PresentationContextValue {
 }
 
 export function PresentationProvider({ children }: { children: ReactNode }) {
-  const [active, setActive] = useState(false);
-  const start = useCallback(() => setActive(true), []);
+  const [mode, setMode] = useState<DemoMode>(null);
+  const start = useCallback((m: Exclude<DemoMode, null>) => setMode(m), []);
+  const exit = useCallback(() => setMode(null), []);
   return (
-    <PresentationContext.Provider value={{ start, active }}>
+    <PresentationContext.Provider value={{ start, active: mode !== null }}>
       {children}
-      {active && <PresentationRunner onExit={() => setActive(false)} />}
+      {mode === 'tour' && <PresentationRunner onExit={exit} />}
+      {mode === 'scenario' && <ScenarioRunner onExit={exit} />}
+      {mode === 'security' && <SecurityRunner onExit={exit} />}
     </PresentationContext.Provider>
   );
 }
@@ -166,12 +173,20 @@ function roleLabel(role: TourRole): string {
   return role === 'PERSONEL' ? 'Uzman' : role === 'SUPERVISOR' ? 'Süpervizör' : role === 'ADMIN' ? 'Admin' : 'Abone';
 }
 
-/** Login ekranındaki başlat butonu. */
+/** Login ekranındaki demo mod başlatıcıları. */
 export function PresentationStartButton() {
   const { start } = usePresentation();
   return (
-    <button type="button" className="present-start-btn" onClick={start}>
-      <Play size={15} /> Sunum Modu
-    </button>
+    <div className="present-launcher">
+      <button type="button" className="present-start-btn" onClick={() => start('tour')}>
+        <Play size={15} /> Sunum Turu
+      </button>
+      <button type="button" className="present-start-btn scenario" onClick={() => start('scenario')}>
+        <Rocket size={15} /> Otomatik Senaryo
+      </button>
+      <button type="button" className="present-start-btn security" onClick={() => start('security')}>
+        <Shield size={15} /> Güvenlik Testi
+      </button>
+    </div>
   );
 }
