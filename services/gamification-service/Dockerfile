@@ -20,4 +20,7 @@ RUN npm install --no-audit --no-fund \
 WORKDIR /repo/services/gamification-service
 EXPOSE 3004
 
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=prisma/schema.prisma && node dist/main.js"]
+# Başlangıçta: migrate + (otomatik, idempotent) seed + servis. Seed idempotenttir
+# (veri varsa atlar) ve hataya dayanıklıdır (başarısız olsa bile servis başlar).
+# SEED_ON_START=false ile kapatılabilir.
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=prisma/schema.prisma && { [ \"${SEED_ON_START:-true}\" != true ] || npm run seed || echo 'seed atlandi/basarisiz'; } && node dist/main.js"]

@@ -43,17 +43,21 @@ Diğer dokümanlar: [`EVENTS.md`](EVENTS.md) (tüm event şemaları), [`docs/AI_
 
 ## Kurulum ve Çalıştırma
 
+**Tek komut yeter** — her servis başlarken migration'ları uygular ve demo
+verisini **otomatik olarak** yükler (idempotent: veri varsa atlar). Ekstra
+bir `seed` komutuna gerek yok.
+
 ```bash
 cp .env.example .env   # opsiyonel — varsayılanlarla da çalışır
 docker compose up --build
 ```
 
-Tüm servisler ayağa kalktıktan sonra (yaklaşık 1-2 dakika) demo verilerini yükleyin:
+Tüm servisler `healthy` olduğunda (yaklaşık 1-2 dakika) sistem hazırdır —
+28 kampanya, 12 uzman, liderlik tablosu, AI doğruluk geçmişi ve abone
+teklifleri dahil.
 
-```bash
-docker compose exec identity-service npm run seed
-docker compose exec ai-service npm run seed
-```
+> Otomatik seed'i kapatmak isterseniz `.env`'e `SEED_ON_START=false` ekleyin;
+> sonra dilediğinizde elle çalıştırın: `docker compose exec <servis> npm run seed`.
 
 Frontend: **http://localhost:5173**
 API Gateway: **http://localhost:3000/api/v1**
