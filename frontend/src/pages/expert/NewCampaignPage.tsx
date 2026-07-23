@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Sparkles } from 'lucide-react';
 import { CampaignType, SegmentType } from '@campaigncell/shared-types';
 import { createCampaign } from '../../api/campaignApi';
 import { apiErrorMessage } from '../../api/client';
+import { Campaign } from '../../types';
 import { useToast } from '../../shared/ToastContext';
-import { CAMPAIGN_TYPE_LABELS, SEGMENT_LABELS } from '../../shared/labels';
+import { CAMPAIGN_TYPE_LABELS, PRIORITY_LABELS, SEGMENT_LABELS } from '../../shared/labels';
 
 const STEPS = ['Temel Bilgiler', 'Hedefleme', 'Teklif', 'Önizleme'] as const;
 
@@ -17,8 +19,20 @@ export function NewCampaignPage() {
   const [discountRate, setDiscountRate] = useState(20);
   const [validUntil, setValidUntil] = useState('');
   const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<Campaign | null>(null);
   const { show } = useToast();
   const navigate = useNavigate();
+
+  function resetForm() {
+    setResult(null);
+    setStep(0);
+    setTitle('');
+    setType(CampaignType.EK_PAKET);
+    setTargetSegmentHint('');
+    setSubscriberIds('');
+    setDiscountRate(20);
+    setValidUntil('');
+  }
 
   const subscriberIdList = subscriberIds
     .split(',')
@@ -43,23 +57,81 @@ export function NewCampaignPage() {
         validUntil: new Date(validUntil).toISOString(),
         targetSubscriberIds: subscriberIdList,
       });
-      if (campaign.optimizationCase) {
-        show(
-          'success',
-          `Kampanya oluşturuldu (${campaign.campaignNumber}) — AI dönüşüm tahminini düşük buldu, optimizasyon vakası açıldı.`,
-        );
-      } else {
-        show(
-          'success',
-          `Kampanya oluşturuldu (${campaign.campaignNumber}) — AI dönüşüm tahminini yeterli buldu, vaka açılmadı (sağlıklı kampanya).`,
-        );
-      }
-      navigate('/expert/cases');
+      show('success', `Kampanya oluşturuldu (${campaign.campaignNumber})`);
+      setResult(campaign); // AI sonucunu ekranda göster (yönlendirme yerine)
     } catch (err) {
       show('error', apiErrorMessage(err, 'Kampanya oluşturulamadı'));
     } finally {
       setLoading(false);
     }
+  }
+
+  // Kampanya oluşturulduktan sonra: AI'ın sınıflandırma sonucunu göster
+  // (demo senaryosu adım 3 — segment + öncelik + güven + dönüşüm tahmini).
+  if (result) {
+    const noCaseButHealthy = !result.optimizationCase;
+    const assignedExpertId = result.optimizationCase?.assignedExpertId ?? null;
+    const pct = (v: number | null) => (v == null ? '—' : `%${Math.round(v * 100)}`);
+    return (
+      <div className="card" style={{ maxWidth: 640 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <span className="brand-mark" style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--color-brand-navy)', color: 'var(--color-brand-yellow)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Sparkles size={18} />
+          </span>
+          <div>
+            <h2 style={{ margin: 0 }}>AI Analizi Tamamlandı</h2>
+            <div style={{ color: 'var(--color-muted)', fontSize: '0.85rem' }}>
+              {result.campaignNumber} · {result.title}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-2" style={{ marginTop: 16 }}>
+          <div className="stat-tile">
+            <div className="label">AI Segment</div>
+            <div className="value" style={{ fontSize: '1.2rem' }}>
+              <span className={`segment-dot segment-${result.aiSegment}`} /> {result.aiSegment ? SEGMENT_LABELS[result.aiSegment] : 'BELİRSİZ'}
+            </div>
+          </div>
+          <div className="stat-tile">
+            <div className="label">Öncelik</div>
+            <div className="value" style={{ fontSize: '1.2rem' }}>{result.aiPriority ? PRIORITY_LABELS[result.aiPriority] : 'ORTA'}</div>
+          </div>
+          <div className="stat-tile">
+            <div className="label">AI Güven</div>
+            <div className="value" style={{ fontSize: '1.2rem' }}>{pct(result.aiConfidence)}</div>
+          </div>
+          <div className="stat-tile">
+            <div className="label">Dönüşüm Tahmini</div>
+            <div className="value" style={{ fontSize: '1.2rem' }}>{pct(result.aiConversionProbability)}</div>
+          </div>
+        </div>
+
+        <div className={`service-banner ${noCaseButHealthy ? 'ok' : ''}`} style={{ marginTop: 16 }}>
+          {noCaseButHealthy ? (
+            <>AI dönüşüm tahminini <strong>yeterli</strong> buldu (eşiğin üzerinde) — vaka açılmadı, kampanya "sağlıklı". Abonelere teklifler yine de üretildi.</>
+          ) : (
+            <>
+              Dönüşüm tahmini eşiğin (<strong>%40</strong>) altında → bir <strong>optimizasyon vakası</strong> açıldı.
+              {assignedExpertId ? (
+                <> AI, vakayı en uygun uzmana <strong>otomatik atadı</strong> (uzmanlık×0.5 + boşluk×0.3 + performans×0.2).</>
+              ) : (
+                <> Uygun uzman bulunamadı → <strong>manuel kuyruğa</strong> düştü.</>
+              )}
+            </>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+          <button className="btn btn-primary" onClick={() => navigate('/expert/cases')}>
+            Vakalarıma Git
+          </button>
+          <button className="btn btn-secondary" onClick={resetForm}>
+            Yeni Kampanya Oluştur
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
