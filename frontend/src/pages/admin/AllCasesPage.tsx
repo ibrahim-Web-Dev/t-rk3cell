@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trash2 } from 'lucide-react';
-import { Role } from '@campaigncell/shared-types';
-import { listCases } from '../../api/caseApi';
+import { Trash2, Send } from 'lucide-react';
+import { Role, CaseStatus } from '@campaigncell/shared-types';
+import { listCases, publishCase } from '../../api/caseApi';
 import { listStaff } from '../../api/usersApi';
 import { deleteCampaign } from '../../api/campaignApi';
 import { apiErrorMessage } from '../../api/client';
@@ -20,9 +20,12 @@ export function AllCasesPage() {
   const [staff, setStaff] = useState<AuthUser[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const { user } = useAuth();
   const { show } = useToast();
   const isAdmin = user?.role === Role.ADMIN;
+  const isSupervisor = user?.role === Role.SUPERVISOR;
+  const showActions = isAdmin || isSupervisor;
 
   function load() {
     setError(null);
@@ -48,6 +51,21 @@ export function AllCasesPage() {
       show('error', apiErrorMessage(err, 'Kampanya silinemedi'));
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  // TAMAMLANDI -> YAYINDA (case doc 4.2: "Yönetici / Onay verildi"). Süpervizör
+  // tamamlanan optimizasyonu onaylayıp yayına alır.
+  async function handlePublish(caseId: string) {
+    setPublishingId(caseId);
+    try {
+      await publishCase(caseId);
+      show('success', 'Vaka yayına alındı');
+      load();
+    } catch (err) {
+      show('error', apiErrorMessage(err, 'Yayınlanamadı'));
+    } finally {
+      setPublishingId(null);
     }
   }
 
@@ -102,7 +120,7 @@ export function AllCasesPage() {
               <th>Durum</th>
               <th>Atanan Uzman</th>
               <th>SLA</th>
-              {isAdmin && <th style={{ textAlign: 'right' }}>İşlem</th>}
+              {showActions && <th style={{ textAlign: 'right' }}>İşlem</th>}
             </tr>
           </thead>
           <tbody>
@@ -118,16 +136,29 @@ export function AllCasesPage() {
                   <td>{STATUS_LABELS[c.status]}</td>
                   <td>{expert ? `${expert.firstName} ${expert.lastName}` : c.assignedExpertId ? c.assignedExpertId.slice(0, 8) : '—'}</td>
                   <td>{formatRemaining(c.slaDueAt, c.completedAt)}</td>
-                  {isAdmin && (
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        disabled={deletingId === c.campaignId}
-                        onClick={() => handleDelete(c.campaignId, c.campaign?.title ?? c.campaignId)}
-                        title="Kampanyayı sil"
-                      >
-                        <Trash2 size={14} /> {deletingId === c.campaignId ? 'Siliniyor…' : 'Sil'}
-                      </button>
+                  {showActions && (
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {isSupervisor && c.status === CaseStatus.TAMAMLANDI && (
+                        <button
+                          className="btn btn-success btn-sm"
+                          disabled={publishingId === c.id}
+                          onClick={() => handlePublish(c.id)}
+                          title="Onayla ve yayına al (TAMAMLANDI → YAYINDA)"
+                          style={{ marginRight: 6 }}
+                        >
+                          <Send size={14} /> {publishingId === c.id ? 'Yayınlanıyor…' : 'Yayınla'}
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          className="btn btn-danger btn-sm"
+                          disabled={deletingId === c.campaignId}
+                          onClick={() => handleDelete(c.campaignId, c.campaign?.title ?? c.campaignId)}
+                          title="Kampanyayı sil"
+                        >
+                          <Trash2 size={14} /> {deletingId === c.campaignId ? 'Siliniyor…' : 'Sil'}
+                        </button>
+                      )}
                     </td>
                   )}
                 </tr>
