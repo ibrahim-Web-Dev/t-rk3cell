@@ -11,6 +11,7 @@ import { OffersPage } from './pages/subscriber/OffersPage';
 import { CaseQueuePage } from './pages/expert/CaseQueuePage';
 import { CaseDetailPage } from './pages/expert/CaseDetailPage';
 import { NewCampaignPage } from './pages/expert/NewCampaignPage';
+import { CampaignsPage } from './pages/CampaignsPage';
 import { ProfilePage } from './pages/expert/ProfilePage';
 import { DashboardPage } from './pages/supervisor/DashboardPage';
 import { PendingQueuePage } from './pages/supervisor/PendingQueuePage';
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route element={<RequireRole roles={[Role.PERSONEL]} />}>
           <Route path="/expert/cases" element={<CaseQueuePage />} />
           <Route path="/expert/cases/:id" element={<CaseDetailPage />} />
+          <Route path="/expert/campaigns" element={<CampaignsPage />} />
           <Route path="/expert/campaigns/new" element={<NewCampaignPage />} />
           <Route path="/expert/profile" element={<ProfilePage />} />
         </Route>
@@ -51,6 +53,7 @@ function AppRoutes() {
           <Route path="/supervisor/dashboard" element={<DashboardPage />} />
           <Route path="/supervisor/ai-insights" element={<AiInsightsPage />} />
           <Route path="/supervisor/experts" element={<ExpertsPage />} />
+          <Route path="/campaigns" element={<CampaignsPage />} />
           <Route path="/cases-overview" element={<AllCasesPage />} />
         </Route>
         <Route element={<RequireRole roles={[Role.SUPERVISOR]} />}>

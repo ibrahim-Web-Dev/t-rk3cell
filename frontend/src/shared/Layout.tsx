@@ -7,11 +7,13 @@ const NAV_BY_ROLE: Record<Role, { to: string; label: string }[]> = {
   [Role.SUBSCRIBER]: [{ to: '/subscriber/offers', label: 'Tekliflerim' }],
   [Role.PERSONEL]: [
     { to: '/expert/cases', label: 'Vakalarım' },
+    { to: '/expert/campaigns', label: 'Kampanyalarım' },
     { to: '/expert/campaigns/new', label: 'Yeni Kampanya' },
     { to: '/expert/profile', label: 'Profilim' },
   ],
   [Role.SUPERVISOR]: [
     { to: '/supervisor/dashboard', label: 'Dashboard' },
+    { to: '/campaigns', label: 'Kampanyalar' },
     { to: '/supervisor/queue', label: 'Bekleyen Kuyruk' },
     { to: '/supervisor/experts', label: 'Uzmanlar' },
     { to: '/supervisor/ai-insights', label: 'AI İçgörüleri' },
@@ -19,6 +21,7 @@ const NAV_BY_ROLE: Record<Role, { to: string; label: string }[]> = {
   ],
   [Role.ADMIN]: [
     { to: '/supervisor/dashboard', label: 'Dashboard' },
+    { to: '/campaigns', label: 'Kampanyalar' },
     { to: '/admin/staff', label: 'Personel Yönetimi' },
     { to: '/cases-overview', label: 'Tüm Vakalar' },
     { to: '/supervisor/ai-insights', label: 'AI İçgörüleri' },
