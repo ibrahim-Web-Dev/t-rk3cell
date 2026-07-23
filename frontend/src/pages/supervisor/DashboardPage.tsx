@@ -50,16 +50,22 @@ export function DashboardPage() {
 
   function load() {
     setError(null);
-    Promise.all([segmentDistribution(), slaCompliance(), conversionTrend(14), expertPerformance(), accuracyOverall(), listStaff()])
-      .then(([s, sl, t, e, a, staff]) => {
+    // AI Service çağrısı (accuracyOverall) ayrı ele alınır: AI kapalıyken
+    // dashboard'un geri kalanı (segment/SLA/trend/uzman/personel - Campaign
+    // ve Identity servislerinden) yine açılmalı. Servis bağımsızlığı case
+    // gereği; bir servis çökünce diğerlerinin ekranı da çökmemeli.
+    Promise.all([segmentDistribution(), slaCompliance(), conversionTrend(14), expertPerformance(), listStaff()])
+      .then(([s, sl, t, e, staff]) => {
         setSegments(s);
         setSla(sl);
         setTrend(t);
         setExperts(e);
-        setAccuracy(a);
         setStaffNames(new Map(staff.map((u) => [u.id, `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id.slice(0, 8)])));
       })
       .catch((err) => setError(apiErrorMessage(err, 'Dashboard yüklenemedi')));
+    accuracyOverall()
+      .then(setAccuracy)
+      .catch(() => setAccuracy(null)); // AI kapalı -> "AI doğruluk" kartı "—" gösterir
   }
 
   useEffect(load, []);
@@ -70,7 +76,8 @@ export function DashboardPage() {
   );
 
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!segments || !sla || !trend || !experts || !accuracy) return <LoadingSpinner label="Dashboard yükleniyor..." />;
+  // accuracy KASITLI olarak beklenmez: AI kapalıysa null kalır ama dashboard yine açılır.
+  if (!segments || !sla || !trend || !experts) return <LoadingSpinner label="Dashboard yükleniyor..." />;
 
   return (
     <div>
@@ -84,8 +91,8 @@ export function DashboardPage() {
           <div className="label">SLA Aşan Vaka</div>
         </div>
         <div className="stat-tile">
-          <div className="value">{accuracy.accuracyRate != null ? `%${accuracy.accuracyRate}` : '-'}</div>
-          <div className="label">AI Doğruluk Oranı ({accuracy.total} tahmin)</div>
+          <div className="value">{accuracy ? (accuracy.accuracyRate != null ? `%${accuracy.accuracyRate}` : '-') : '—'}</div>
+          <div className="label">{accuracy ? `AI Doğruluk Oranı (${accuracy.total} tahmin)` : 'AI Doğruluk (AI servisi kapalı)'}</div>
         </div>
       </div>
 

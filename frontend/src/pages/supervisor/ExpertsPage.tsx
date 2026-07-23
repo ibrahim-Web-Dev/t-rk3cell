@@ -30,7 +30,10 @@ export function ExpertsPage() {
   function load() {
     setError(null);
     setRows(null);
-    Promise.all([listStaff(), expertPerformance(), listExpertProfiles()])
+    // listExpertProfiles() AI Service'ten gelir; AI kapalıyken boş dizi ile
+    // devam edilir (kapasite kolonu 0 görünür), sayfa yine açılır - servis
+    // bağımsızlığı. Diğer veriler Identity/Campaign/Gamification'dan.
+    Promise.all([listStaff(), expertPerformance(), listExpertProfiles().catch(() => [] as ExpertProfile[])])
       .then(async ([staff, perf, profiles]) => {
         const experts = staff.filter((s) => s.role === 'PERSONEL');
         const perfById = new Map<string, ExpertPerformanceRow>(perf.map((p) => [p.expertId, p]));
