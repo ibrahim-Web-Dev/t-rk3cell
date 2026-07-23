@@ -9,6 +9,7 @@ import { homePathForRole } from '../homePathForRole';
 import { OtpModal } from '../shared/components/OtpModal';
 import { AccountPromptModal } from '../shared/components/AccountPromptModal';
 import { LockCountdown } from '../shared/components/LockCountdown';
+import { PresentationStartButton } from '../presentation/PresentationMode';
 
 type Tab = 'subscriber' | 'staff';
 type SubscriberMode = 'login' | 'register';
@@ -262,6 +263,10 @@ export function LoginPage() {
         <div className="demo-hint">
           <strong>Demo hesapları:</strong> Personel için <code>uzman1@campaigncell.com</code> / <code>Password1!</code>
           {' '}· Abone için GSM <code>5551234567</code>, OTP <code>1234</code>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
+          <PresentationStartButton />
         </div>
       </div>
 

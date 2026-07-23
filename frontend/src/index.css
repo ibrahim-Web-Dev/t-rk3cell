@@ -274,6 +274,131 @@ body {
 .lock-banner .lock-sub { font-size: 0.82rem; margin-top: 2px; }
 .lock-banner .lock-timer { font-size: 1rem; }
 
+/* ---------------------------------------------------------------------- */
+/* Sunum Modu (rehberli tur)                                              */
+/* ---------------------------------------------------------------------- */
+
+.present-start-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-brand-blue-500);
+  background: var(--color-brand-blue-50);
+  color: var(--color-brand-blue-600);
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.present-start-btn:hover { background: var(--color-brand-blue-100); }
+
+@keyframes present-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.present-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  background: var(--color-brand-navy);
+  color: #fff;
+  box-shadow: 0 -10px 40px rgba(7, 7, 95, 0.35);
+  animation: present-slide-up 0.25s ease-out;
+}
+
+.present-progress {
+  display: flex;
+  gap: 5px;
+  padding: 8px 20px 0;
+}
+.present-dot {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.2);
+  transition: background 0.2s ease;
+}
+.present-dot.done { background: rgba(255, 201, 0, 0.55); }
+.present-dot.active { background: var(--color-brand-yellow); }
+
+.present-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px 14px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.present-step-no {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-brand-yellow);
+  min-width: 56px;
+  font-variant-numeric: tabular-nums;
+}
+.present-text { flex: 1; min-width: 0; }
+.present-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.02rem;
+  flex-wrap: wrap;
+}
+.present-role {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.15);
+}
+.present-role.role-PERSONEL { background: rgba(22, 156, 197, 0.35); }
+.present-role.role-SUPERVISOR { background: rgba(40, 85, 172, 0.5); }
+.present-role.role-ADMIN { background: rgba(217, 45, 32, 0.4); }
+.present-role.role-SUBSCRIBER { background: rgba(255, 201, 0, 0.35); color: #fff; }
+.present-loading { font-size: 0.72rem; color: rgba(255, 255, 255, 0.7); font-weight: 600; }
+.present-say { font-size: 0.9rem; color: rgba(255, 255, 255, 0.86); margin-top: 4px; line-height: 1.45; }
+
+.present-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.present-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.present-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.18); }
+.present-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.present-btn.primary { background: var(--color-brand-yellow); color: var(--color-brand-navy); border-color: transparent; }
+.present-btn.primary:hover { background: var(--color-brand-yellow-hover); }
+
+.present-hint {
+  text-align: center;
+  padding: 0 0 8px;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+.present-hint kbd {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 0.72rem;
+}
+
 .form-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .form-field label { font-size: 0.85rem; color: var(--color-muted); font-weight: 700; }
 .form-field input, .form-field select, .form-field textarea {

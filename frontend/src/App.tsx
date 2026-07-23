@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Role } from '@campaigncell/shared-types';
 import { AuthProvider, useAuth } from './auth/AuthContext';
+import { PresentationProvider } from './presentation/PresentationMode';
 import { RequireRole } from './auth/RequireRole';
 import { ToastProvider } from './shared/ToastContext';
 import { Layout } from './shared/Layout';
@@ -76,7 +77,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
-          <AppRoutes />
+          <PresentationProvider>
+            <AppRoutes />
+          </PresentationProvider>
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
