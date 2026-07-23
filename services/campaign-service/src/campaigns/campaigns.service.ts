@@ -18,7 +18,14 @@ import { mintSystemBearerToken } from '../ai-client/system-token';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { getCaseConversionThreshold } from './case-conversion-threshold';
 
-const MAX_WELCOME_OFFERS = 5;
+// Yeni aboneye açılışta gösterilecek "hoş geldin" teklif sayısı ve garanti
+// görünürlük tabanı. Yeni abonenin AI telemetrisi henüz yok; kural tabanlı
+// skor 0.60 görünürlük eşiğinin altında kalıp teklifleri gizleyebiliyordu.
+// Bunlar bilinçli olarak "onboarding" için seçilmiş YENI_ABONE kampanyaları
+// olduğundan, skoru en az WELCOME_MIN_SCORE'a yükseltip görünür kılıyoruz
+// (gerçek AI dönüşüm olasılığı conversionProbability alanında korunuyor).
+const MAX_WELCOME_OFFERS = 3;
+const WELCOME_MIN_SCORE = 0.66;
 
 @Injectable()
 export class CampaignsService implements OnModuleInit {
@@ -64,24 +71,24 @@ export class CampaignsService implements OnModuleInit {
     if (candidates.length === 0) return;
 
     const bearerToken = mintSystemBearerToken();
+    let created = 0;
     for (const campaign of candidates) {
       const recommendation = await this.aiClient.recommend(
         { campaignId: campaign.id, subscriberId, campaignType: campaign.type, discountRate: campaign.discountRate },
         bearerToken,
       );
-      if (!recommendation) continue;
+      // AI erişilemese bile yeni abone boş ekranla karşılaşmasın: skor için
+      // görünür bir taban kullanılır, gerçek dönüşüm olasılığı (varsa) korunur.
+      const conversionProbability = recommendation?.conversionProbability ?? WELCOME_MIN_SCORE;
+      const score = Math.max(recommendation?.score ?? 0, WELCOME_MIN_SCORE);
       await this.prisma.subscriberOffer.upsert({
         where: { campaignId_subscriberId: { campaignId: campaign.id, subscriberId } },
-        create: {
-          campaignId: campaign.id,
-          subscriberId,
-          score: recommendation.score,
-          conversionProbability: recommendation.conversionProbability,
-        },
-        update: {},
+        create: { campaignId: campaign.id, subscriberId, score, conversionProbability },
+        update: { score, conversionProbability },
       });
+      created += 1;
     }
-    this.logger.log(`Yeni abone (${subscriberId}) için ${candidates.length} hoş geldin teklifi oluşturuldu.`);
+    this.logger.log(`Yeni abone (${subscriberId}) için ${created} görünür hoş geldin teklifi oluşturuldu.`);
   }
 
   private async generateCampaignNumber(): Promise<string> {
